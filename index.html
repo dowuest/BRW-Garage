@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#1a1a2e">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="BRW Garage">
+  <title>BRW Garage – Laufblätter</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icon-192.png">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #1a1a2e;
+      --surface: #16213e;
+      --accent: #4a6fa5;
+      --accent-light: #6b9fd4;
+      --text: #ffffff;
+      --text-muted: #a0b4c8;
+      --success: #2ecc71;
+      --error: #e74c3c;
+      --warn: #f39c12;
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      overflow: hidden;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    #app {
+      display: flex;
+      flex-direction: column;
+      height: 100dvh;
+      height: 100vh;
+    }
+
+    /* ── Header ── */
+    header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 20px;
+      background: var(--surface);
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+      flex-shrink: 0;
+    }
+
+    header img {
+      width: 38px;
+      height: 38px;
+      border-radius: 8px;
+      object-fit: cover;
+    }
+
+    .header-text h1 {
+      font-size: 1rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+    }
+
+    .header-text p {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      margin-top: 1px;
+    }
+
+    /* ── Main content ── */
+    main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* ── Screens ── */
+    .screen {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      height: 100%;
+      gap: 20px;
+      animation: fadeIn 0.25s ease;
+    }
+    .screen.active { display: flex; }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── Camera screen ── */
+    #video-container {
+      position: relative;
+      width: 100%;
+      max-width: 500px;
+      border-radius: 16px;
+      overflow: hidden;
+      background: #000;
+      aspect-ratio: 4/3;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    }
+
+    #video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .viewfinder-overlay {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+    }
+
+    .viewfinder-corner {
+      position: absolute;
+      width: 28px;
+      height: 28px;
+      border-color: rgba(255,255,255,0.8);
+      border-style: solid;
+    }
+    .viewfinder-corner.tl { top: 16px; left: 16px; border-width: 3px 0 0 3px; border-radius: 4px 0 0 0; }
+    .viewfinder-corner.tr { top: 16px; right: 16px; border-width: 3px 3px 0 0; border-radius: 0 4px 0 0; }
+    .viewfinder-corner.bl { bottom: 16px; left: 16px; border-width: 0 0 3px 3px; border-radius: 0 0 0 4px; }
+    .viewfinder-corner.br { bottom: 16px; right: 16px; border-width: 0 3px 3px 0; border-radius: 0 0 4px 0; }
+
+    .camera-hint {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      text-align: center;
+    }
+
+    /* ── Shutter button ── */
+    #btn-capture {
+      width: 84px;
+      height: 84px;
+      border-radius: 50%;
+      border: 4px solid #fff;
+      background: transparent;
+      cursor: pointer;
+      position: relative;
+      transition: transform 0.1s;
+      flex-shrink: 0;
+    }
+    #btn-capture::after {
+      content: '';
+      position: absolute;
+      inset: 6px;
+      background: #fff;
+      border-radius: 50%;
+      transition: background 0.15s;
+    }
+    #btn-capture:active { transform: scale(0.93); }
+    #btn-capture:active::after { background: #ccc; }
+
+    /* ── Preview screen ── */
+    #preview-img {
+      width: 100%;
+      max-width: 500px;
+      border-radius: 16px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+      object-fit: contain;
+      max-height: 55vh;
+    }
+
+    .preview-label {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+    }
+
+    .btn-row {
+      display: flex;
+      gap: 14px;
+      width: 100%;
+      max-width: 400px;
+    }
+
+    .btn {
+      flex: 1;
+      padding: 18px 10px;
+      border: none;
+      border-radius: 14px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.1s, opacity 0.15s;
+      letter-spacing: 0.02em;
+    }
+    .btn:active { transform: scale(0.96); }
+
+    .btn-secondary {
+      background: rgba(255,255,255,0.1);
+      color: var(--text);
+    }
+    .btn-secondary:hover { background: rgba(255,255,255,0.15); }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+    }
+    .btn-primary:hover { background: var(--accent-light); }
+
+    /* ── Upload / status screen ── */
+    .status-icon {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2.2rem;
+    }
+
+    .status-icon.sending {
+      background: rgba(74, 111, 165, 0.2);
+      border: 3px solid var(--accent);
+    }
+
+    .status-icon.success {
+      background: rgba(46, 204, 113, 0.15);
+      border: 3px solid var(--success);
+    }
+
+    .status-icon.error {
+      background: rgba(231, 76, 60, 0.15);
+      border: 3px solid var(--error);
+    }
+
+    .status-title {
+      font-size: 1.25rem;
+      font-weight: 700;
+      text-align: center;
+    }
+
+    .status-sub {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      text-align: center;
+      max-width: 280px;
+      line-height: 1.5;
+    }
+
+    /* Spinner */
+    .spinner {
+      width: 44px;
+      height: 44px;
+      border: 4px solid rgba(255,255,255,0.15);
+      border-top-color: var(--accent-light);
+      border-radius: 50%;
+      animation: spin 0.75s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Error screen ── */
+    .error-icon { font-size: 3.5rem; }
+
+    .error-title {
+      font-size: 1.2rem;
+      font-weight: 700;
+      text-align: center;
+      color: var(--warn);
+    }
+
+    .error-msg {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      text-align: center;
+      max-width: 300px;
+      line-height: 1.6;
+    }
+
+    /* ── Offline banner ── */
+    #offline-banner {
+      display: none;
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: var(--warn);
+      color: #1a1a2e;
+      text-align: center;
+      padding: 10px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      z-index: 100;
+    }
+    #offline-banner.visible { display: block; }
+
+    /* ── Install prompt ── */
+    #install-banner {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      background: var(--surface);
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+      padding: 12px 16px;
+      font-size: 0.82rem;
+      z-index: 100;
+      gap: 10px;
+      align-items: center;
+    }
+    #install-banner.visible { display: flex; }
+    #install-banner span { flex: 1; color: var(--text-muted); }
+    #btn-install {
+      padding: 8px 16px;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    #btn-dismiss-install {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 1.1rem;
+      cursor: pointer;
+      padding: 4px;
+    }
+  </style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <img src="icon-192.png" alt="BRW Logo" onerror="this.style.display='none'">
+    <div class="header-text">
+      <h1>BRW GARAGE</h1>
+      <p>Laufblätter Scanner</p>
+    </div>
+  </header>
+
+  <main>
+    <!-- Camera screen -->
+    <div id="screen-camera" class="screen active">
+      <div id="video-container">
+        <video id="video" autoplay playsinline muted></video>
+        <div class="viewfinder-overlay">
+          <div class="viewfinder-corner tl"></div>
+          <div class="viewfinder-corner tr"></div>
+          <div class="viewfinder-corner bl"></div>
+          <div class="viewfinder-corner br"></div>
+        </div>
+      </div>
+      <p class="camera-hint">Laufblatt im Sucher positionieren</p>
+      <button id="btn-capture" aria-label="Foto aufnehmen"></button>
+    </div>
+
+    <!-- Preview screen -->
+    <div id="screen-preview" class="screen">
+      <img id="preview-img" src="" alt="Vorschau">
+      <p class="preview-label">Foto überprüfen</p>
+      <div class="btn-row">
+        <button class="btn btn-secondary" id="btn-retake">↩ Wiederholen</button>
+        <button class="btn btn-primary" id="btn-confirm">Senden ✓</button>
+      </div>
+    </div>
+
+    <!-- Uploading screen -->
+    <div id="screen-uploading" class="screen">
+      <div class="spinner"></div>
+      <p class="status-title">Wird gesendet…</p>
+      <p class="status-sub">Laufblatt wird übertragen und verarbeitet</p>
+    </div>
+
+    <!-- Success screen -->
+    <div id="screen-success" class="screen">
+      <div class="status-icon success">✓</div>
+      <p class="status-title">Erfolgreich gesendet!</p>
+      <p class="status-sub">Das Laufblatt wurde übermittelt und wird verarbeitet.</p>
+      <p class="status-sub" id="success-filename" style="color:var(--accent-light); font-size:0.78rem;"></p>
+    </div>
+
+    <!-- Error (upload) screen -->
+    <div id="screen-error" class="screen">
+      <div class="status-icon error">✕</div>
+      <p class="status-title">Fehler beim Senden</p>
+      <p class="status-sub" id="error-detail">Die Verbindung zum Server konnte nicht hergestellt werden.</p>
+      <div class="btn-row" style="max-width:300px; margin-top:8px;">
+        <button class="btn btn-secondary" id="btn-retry-upload">Erneut senden</button>
+        <button class="btn btn-primary" id="btn-new-photo">Neues Foto</button>
+      </div>
+    </div>
+
+    <!-- Camera permission error screen -->
+    <div id="screen-cam-error" class="screen">
+      <div class="error-icon">📷</div>
+      <p class="error-title">Kamera nicht verfügbar</p>
+      <p class="error-msg" id="cam-error-msg">
+        Die Kamera konnte nicht geöffnet werden. Bitte erteilen Sie der App die Kameraberechtigung in den Geräteeinstellungen.
+      </p>
+      <button class="btn btn-primary" id="btn-retry-cam" style="max-width:260px; margin-top:8px;">
+        Erneut versuchen
+      </button>
+    </div>
+  </main>
+</div>
+
+<div id="offline-banner">⚠ Keine Internetverbindung – Fotos können nicht gesendet werden</div>
+
+<div id="install-banner">
+  <span>App auf dem Startbildschirm installieren?</span>
+  <button id="btn-install">Installieren</button>
+  <button id="btn-dismiss-install">✕</button>
+</div>
+
+<canvas id="canvas" style="display:none"></canvas>
+
+<script>
+  const WEBHOOK_URL = 'https://hook.eu1.make.com/miq6ugjn8lprsxxxsfrhwavtjzieoocs';
+  const MAX_BYTES = 1_000_000;
+
+  // ── State ──────────────────────────────────────────────────────────────────
+  let stream = null;
+  let capturedDataUrl = null;
+  let lastFilename = null;
+  let lastBase64 = null;
+  let deferredInstallPrompt = null;
+
+  // ── Elements ───────────────────────────────────────────────────────────────
+  const video         = document.getElementById('video');
+  const canvas        = document.getElementById('canvas');
+  const previewImg    = document.getElementById('preview-img');
+  const successFile   = document.getElementById('success-filename');
+  const errorDetail   = document.getElementById('error-detail');
+  const camErrorMsg   = document.getElementById('cam-error-msg');
+  const offlineBanner = document.getElementById('offline-banner');
+  const installBanner = document.getElementById('install-banner');
+
+  const screens = {
+    camera:    document.getElementById('screen-camera'),
+    preview:   document.getElementById('screen-preview'),
+    uploading: document.getElementById('screen-uploading'),
+    success:   document.getElementById('screen-success'),
+    error:     document.getElementById('screen-error'),
+    camError:  document.getElementById('screen-cam-error'),
+  };
+
+  // ── Screen navigation ──────────────────────────────────────────────────────
+  function showScreen(name) {
+    Object.values(screens).forEach(s => s.classList.remove('active'));
+    screens[name].classList.add('active');
+  }
+
+  // ── Camera ─────────────────────────────────────────────────────────────────
+  async function startCamera() {
+    if (stream) {
+      stream.getTracks().forEach(t => t.stop());
+      stream = null;
+    }
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: { ideal: 'environment' },
+          width:  { ideal: 1920 },
+          height: { ideal: 1080 }
+        },
+        audio: false
+      });
+      video.srcObject = stream;
+      showScreen('camera');
+    } catch (err) {
+      let msg = 'Die Kamera konnte nicht geöffnet werden.';
+      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+        msg = 'Kamerazugriff wurde verweigert. Bitte erlauben Sie den Kamerazugriff in den Einstellungen Ihres Browsers/Geräts und laden Sie die Seite neu.';
+      } else if (err.name === 'NotFoundError') {
+        msg = 'Keine Kamera gefunden. Stellen Sie sicher, dass Ihr Gerät eine Kamera hat.';
+      } else if (err.name === 'NotReadableError') {
+        msg = 'Die Kamera wird bereits von einer anderen App verwendet. Bitte schließen Sie diese und versuchen Sie es erneut.';
+      }
+      camErrorMsg.textContent = msg;
+      showScreen('camError');
+    }
+  }
+
+  // ── Capture ────────────────────────────────────────────────────────────────
+  function capturePhoto() {
+    const w = video.videoWidth  || 1280;
+    const h = video.videoHeight || 720;
+    canvas.width  = w;
+    canvas.height = h;
+    canvas.getContext('2d').drawImage(video, 0, 0, w, h);
+
+    // Compress: start at quality 0.85, reduce until under MAX_BYTES
+    let quality = 0.85;
+    let dataUrl;
+    do {
+      dataUrl = canvas.toDataURL('image/jpeg', quality);
+      // base64 payload size ≈ (dataUrl.length - prefix.length) * 0.75
+      const prefixLen = 'data:image/jpeg;base64,'.length;
+      const byteSize  = Math.round((dataUrl.length - prefixLen) * 0.75);
+      if (byteSize <= MAX_BYTES || quality <= 0.2) break;
+      quality -= 0.1;
+    } while (true);
+
+    capturedDataUrl = dataUrl;
+    previewImg.src  = dataUrl;
+    showScreen('preview');
+  }
+
+  // ── Upload ─────────────────────────────────────────────────────────────────
+  async function uploadPhoto() {
+    const prefix  = 'data:image/jpeg;base64,';
+    const base64  = capturedDataUrl.startsWith(prefix)
+      ? capturedDataUrl.slice(prefix.length)
+      : capturedDataUrl;
+
+    const ts       = new Date().toISOString();
+    const filename = `laufblatt_${ts.replace(/[:.]/g, '-')}.jpg`;
+
+    lastBase64   = base64;
+    lastFilename = filename;
+
+    const body = JSON.stringify({ image_base64: base64, filename, timestamp: ts });
+
+    // Validate JSON
+    try { JSON.parse(body); } catch {
+      errorDetail.textContent = 'Interner Fehler: ungültige Daten. Bitte erneut versuchen.';
+      showScreen('error');
+      return;
+    }
+
+    showScreen('uploading');
+
+    try {
+      const res = await fetch(WEBHOOK_URL, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body
+      });
+
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+      successFile.textContent = filename;
+      showScreen('success');
+
+      // Auto-reset after 3 s
+      setTimeout(() => startCamera(), 3000);
+
+    } catch (err) {
+      if (!navigator.onLine) {
+        errorDetail.textContent = 'Keine Internetverbindung. Bitte Verbindung herstellen und erneut versuchen.';
+      } else {
+        errorDetail.textContent = `Verbindungsfehler: ${err.message}`;
+      }
+      showScreen('error');
+    }
+  }
+
+  // ── Event listeners ────────────────────────────────────────────────────────
+  document.getElementById('btn-capture').addEventListener('click', capturePhoto);
+
+  document.getElementById('btn-retake').addEventListener('click', () => {
+    capturedDataUrl = null;
+    showScreen('camera');
+  });
+
+  document.getElementById('btn-confirm').addEventListener('click', uploadPhoto);
+
+  document.getElementById('btn-retry-upload').addEventListener('click', () => {
+    if (capturedDataUrl) uploadPhoto();
+  });
+
+  document.getElementById('btn-new-photo').addEventListener('click', startCamera);
+
+  document.getElementById('btn-retry-cam').addEventListener('click', startCamera);
+
+  // ── Offline detection ──────────────────────────────────────────────────────
+  function updateOnlineStatus() {
+    offlineBanner.classList.toggle('visible', !navigator.onLine);
+  }
+  window.addEventListener('online',  updateOnlineStatus);
+  window.addEventListener('offline', updateOnlineStatus);
+  updateOnlineStatus();
+
+  // ── PWA install prompt ─────────────────────────────────────────────────────
+  window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault();
+    deferredInstallPrompt = e;
+    installBanner.classList.add('visible');
+  });
+
+  document.getElementById('btn-install').addEventListener('click', async () => {
+    if (!deferredInstallPrompt) return;
+    deferredInstallPrompt.prompt();
+    const { outcome } = await deferredInstallPrompt.userChoice;
+    deferredInstallPrompt = null;
+    installBanner.classList.remove('visible');
+  });
+
+  document.getElementById('btn-dismiss-install').addEventListener('click', () => {
+    installBanner.classList.remove('visible');
+  });
+
+  // ── Service worker ─────────────────────────────────────────────────────────
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').catch(console.warn);
+  }
+
+  // ── Boot ───────────────────────────────────────────────────────────────────
+  startCamera();
+</script>
+</body>
+</html>
