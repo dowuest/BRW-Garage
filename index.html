@@ -56,6 +56,17 @@
     #btn-capture:active { transform: scale(0.92); }
     #btn-capture:active::after { background: #ccc; }
 
+    /* ── Upload button ── */
+    #btn-upload { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; max-width: 480px; min-height: 48px; border: 2px dashed rgba(255,255,255,0.25); border-radius: 12px; background: transparent; color: var(--text-muted); font-size: 0.88rem; font-weight: 600; cursor: pointer; transition: border-color 0.15s, color 0.15s; }
+    #btn-upload:active, #btn-upload:hover { border-color: var(--accent-light); color: var(--accent-light); }
+
+    /* ── PDF page selector ── */
+    #pdf-page-selector { display: none; align-items: center; justify-content: center; gap: 14px; width: 100%; max-width: 480px; background: var(--surface); border-radius: 12px; padding: 12px 16px; }
+    #pdf-page-selector.visible { display: flex; }
+    #pdf-page-selector button { min-width: 44px; min-height: 44px; border: none; border-radius: 10px; background: var(--surface2); color: var(--text); font-size: 1.1rem; cursor: pointer; }
+    #pdf-page-selector button:disabled { opacity: 0.3; cursor: default; }
+    #pdf-page-info { font-size: 0.85rem; color: var(--text-muted); text-align: center; flex: 1; }
+
     /* ── Preview ── */
     #preview-img { width: 100%; max-width: 480px; border-radius: 14px; object-fit: contain; max-height: 50vh; box-shadow: 0 8px 32px rgba(0,0,0,0.5); }
 
@@ -142,6 +153,14 @@
       </div>
       <p class="cam-hint">Laufblatt im Sucher positionieren und fotografieren</p>
       <button id="btn-capture" aria-label="Foto aufnehmen"></button>
+      <button id="btn-upload">📄 Dokument hochladen</button>
+      <input id="file-input" type="file" accept="image/*,application/pdf" style="display:none">
+      <div id="pdf-page-selector">
+        <button id="btn-pdf-prev">‹</button>
+        <span id="pdf-page-info">Seite 1 von 1</span>
+        <button id="btn-pdf-next">›</button>
+        <button class="btn btn-primary" id="btn-pdf-use" style="flex:none;min-height:40px;font-size:0.85rem;padding:0 16px">Seite verwenden</button>
+      </div>
     </div>
 
     <!-- Preview -->
@@ -237,7 +256,10 @@
 
 <div id="offline-banner">⚠ Keine Internetverbindung</div>
 <canvas id="canvas" style="display:none"></canvas>
+<canvas id="pdf-canvas" style="display:none"></canvas>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>if(window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
 <script src="config.js" onerror="window._noConfig=true"></script>
 <script>
 'use strict';
@@ -325,11 +347,14 @@ let stream = null;
 let compressedBase64 = null;
 let lastResult = null;
 let retryFn = null;
+let pdfDoc = null;
+let pdfPage = 1;
 
 // ── DOM helpers ───────────────────────────────────────────────────────────────
 const $ = id => document.getElementById(id);
-const video  = $('video');
-const canvas = $('canvas');
+const video     = $('video');
+const canvas    = $('canvas');
+const pdfCanvas = $('pdf-canvas');
 
 const SCREEN_IDS = ['s-camera','s-preview','s-processing','s-review','s-success','s-error','s-cam-error','s-settings'];
 function show(id) {
@@ -381,6 +406,62 @@ function captureAndCompress() {
   $('preview-img').src = dataUrl;
   $('size-info').textContent = `Bildgrösse: ${Math.round(b64Bytes(compressedBase64) / 1024)} KB`;
   show('s-preview');
+}
+
+// ── Upload & PDF ──────────────────────────────────────────────────────────────
+function compressFromCanvas(srcCanvas) {
+  const prefix = 'data:image/jpeg;base64,';
+  const draw = (maxPx, q) => {
+    const s = Math.min(1, maxPx / Math.max(srcCanvas.width, srcCanvas.height));
+    canvas.width  = Math.round(srcCanvas.width  * s);
+    canvas.height = Math.round(srcCanvas.height * s);
+    canvas.getContext('2d').drawImage(srcCanvas, 0, 0, canvas.width, canvas.height);
+    return canvas.toDataURL('image/jpeg', q);
+  };
+  let dataUrl = draw(1200, 0.65);
+  if (b64Bytes(dataUrl.slice(prefix.length)) > 900_000) dataUrl = draw(1200, 0.5);
+  if (b64Bytes(dataUrl.slice(prefix.length)) > 900_000) dataUrl = draw(900, 0.5);
+  compressedBase64 = dataUrl.slice(prefix.length);
+  $('preview-img').src = dataUrl;
+  $('size-info').textContent = `Bildgrösse: ${Math.round(b64Bytes(compressedBase64) / 1024)} KB`;
+  show('s-preview');
+}
+
+async function renderPdfPage(pageNum) {
+  const page = await pdfDoc.getPage(pageNum);
+  const vp   = page.getViewport({ scale: 2 });
+  pdfCanvas.width  = vp.width;
+  pdfCanvas.height = vp.height;
+  await page.render({ canvasContext: pdfCanvas.getContext('2d'), viewport: vp }).promise;
+  $('pdf-page-info').textContent = `Seite ${pageNum} von ${pdfDoc.numPages}`;
+  $('btn-pdf-prev').disabled = pageNum <= 1;
+  $('btn-pdf-next').disabled = pageNum >= pdfDoc.numPages;
+}
+
+async function handleFile(file) {
+  if (!file) return;
+  $('pdf-page-selector').classList.remove('visible');
+  pdfDoc = null;
+
+  if (file.type === 'application/pdf') {
+    const arrayBuffer = await file.arrayBuffer();
+    pdfDoc = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    pdfPage = 1;
+    await renderPdfPage(1);
+    if (pdfDoc.numPages > 1) $('pdf-page-selector').classList.add('visible');
+    else compressFromCanvas(pdfCanvas);
+  } else {
+    // Image file
+    const img = new Image();
+    img.onload = () => {
+      canvas.width  = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      canvas.getContext('2d').drawImage(img, 0, 0);
+      compressFromCanvas(canvas);
+      URL.revokeObjectURL(img.src);
+    };
+    img.src = URL.createObjectURL(file);
+  }
 }
 
 // ── Claude API ────────────────────────────────────────────────────────────────
@@ -575,6 +656,11 @@ $('btn-next').addEventListener('click', startCamera);
 $('btn-err-retry').addEventListener('click', () => retryFn && retryFn());
 $('btn-err-cam').addEventListener('click', startCamera);
 $('btn-cam-retry').addEventListener('click', startCamera);
+$('btn-upload').addEventListener('click', () => $('file-input').click());
+$('file-input').addEventListener('change', e => { handleFile(e.target.files[0]); e.target.value = ''; });
+$('btn-pdf-prev').addEventListener('click', async () => { pdfPage--; await renderPdfPage(pdfPage); });
+$('btn-pdf-next').addEventListener('click', async () => { pdfPage++; await renderPdfPage(pdfPage); });
+$('btn-pdf-use').addEventListener('click', () => { $('pdf-page-selector').classList.remove('visible'); compressFromCanvas(pdfCanvas); });
 $('btn-settings').addEventListener('click', () => { updateKeyStatus(); show('s-settings'); });
 $('btn-save-settings').addEventListener('click', saveKeys);
 $('btn-settings-back').addEventListener('click', startCamera);
