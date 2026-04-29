@@ -99,11 +99,26 @@
     .error-box { background: rgba(231,76,60,0.1); border: 1px solid rgba(231,76,60,0.3); border-radius: 12px; padding: 16px; width: 100%; max-width: 480px; }
     .error-box p { font-size: 0.83rem; color: #f5a5a0; line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
 
+    /* ── Settings screen ── */
+    .settings-wrap { width: 100%; max-width: 500px; display: flex; flex-direction: column; gap: 16px; padding-bottom: 24px; }
+    .settings-group { background: var(--surface); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 8px; }
+    .settings-label { font-size: 0.72rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; }
+    .settings-input { width: 100%; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; color: var(--text); font-size: 0.85rem; padding: 12px; font-family: monospace; }
+    .settings-input:focus { outline: none; border-color: var(--accent); }
+    .settings-hint { font-size: 0.72rem; color: var(--text-muted); line-height: 1.4; }
+    .key-status { display: inline-flex; align-items: center; gap: 5px; font-size: 0.72rem; font-weight: 600; padding: 3px 8px; border-radius: 8px; }
+    .key-ok  { background: rgba(46,204,113,0.15); color: var(--success); }
+    .key-missing { background: rgba(231,76,60,0.15); color: var(--error); }
+    .settings-title { font-size: 1.1rem; font-weight: 700; align-self: flex-start; }
+    .settings-sub { font-size: 0.8rem; color: var(--text-muted); align-self: flex-start; }
+
+    /* ── Header gear button ── */
+    #btn-settings { margin-left: auto; background: none; border: none; color: var(--text-muted); font-size: 1.3rem; cursor: pointer; padding: 6px; border-radius: 8px; line-height: 1; flex-shrink: 0; }
+    #btn-settings:active { background: rgba(255,255,255,0.1); }
+
     /* ── Banners ── */
     #offline-banner { display: none; position: fixed; bottom: 0; left: 0; right: 0; background: var(--warn); color: #1a1a2e; text-align: center; padding: 10px; font-size: 0.8rem; font-weight: 600; z-index: 200; }
     #offline-banner.on { display: block; }
-    #config-warn { display: none; position: fixed; top: 0; left: 0; right: 0; background: var(--error); color: #fff; text-align: center; padding: 9px 16px; font-size: 0.78rem; font-weight: 600; z-index: 300; }
-    #config-warn.on { display: block; }
   </style>
 </head>
 <body>
@@ -114,6 +129,7 @@
       <h1>BRW GARAGE LANGNAU</h1>
       <p>Laufblätter Scanner</p>
     </div>
+    <button id="btn-settings" aria-label="Einstellungen">⚙</button>
   </header>
   <main id="main">
 
@@ -187,22 +203,77 @@
       <button class="btn btn-primary" id="btn-cam-retry" style="max-width:280px">Erneut versuchen</button>
     </div>
 
+    <!-- Settings -->
+    <div id="s-settings" class="screen">
+      <div class="settings-wrap">
+        <p class="settings-title">⚙ Einstellungen</p>
+        <p class="settings-sub">API-Keys werden lokal im Browser gespeichert (localStorage) und nie übertragen.</p>
+
+        <div class="settings-group">
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <span class="settings-label">Claude API Key</span>
+            <span class="key-status" id="claude-key-status">–</span>
+          </div>
+          <input class="settings-input" id="inp-claude-key" type="password" placeholder="sk-ant-api03-..." autocomplete="off" spellcheck="false">
+          <p class="settings-hint">Anthropic Console → API Keys. Beginnt mit <code>sk-ant-</code></p>
+        </div>
+
+        <div class="settings-group">
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <span class="settings-label">Airtable Token</span>
+            <span class="key-status" id="airtable-key-status">–</span>
+          </div>
+          <input class="settings-input" id="inp-airtable-key" type="password" placeholder="pat..." autocomplete="off" spellcheck="false">
+          <p class="settings-hint">Airtable → Account → Developer Hub → Personal Access Tokens. Beginnt mit <code>pat</code></p>
+        </div>
+
+        <button class="btn btn-success" id="btn-save-settings">Speichern</button>
+        <button class="btn btn-secondary" id="btn-settings-back">Zurück zur Kamera</button>
+      </div>
+    </div>
+
   </main>
 </div>
 
 <div id="offline-banner">⚠ Keine Internetverbindung</div>
-<div id="config-warn">⚠ config.js nicht gefunden – API-Keys fehlen. Siehe README.</div>
 <canvas id="canvas" style="display:none"></canvas>
 
 <script src="config.js" onerror="window._noConfig=true"></script>
 <script>
 'use strict';
 
-// ── Config ────────────────────────────────────────────────────────────────────
+// ── Config: localStorage takes precedence over config.js ──────────────────────
 if (window._noConfig || typeof CONFIG === 'undefined') {
-  document.getElementById('config-warn').classList.add('on');
   window.CONFIG = { CLAUDE_API_KEY: '', AIRTABLE_TOKEN: '', AIRTABLE_BASE_ID: 'appo9ljZERNttZXEA' };
 }
+function loadStoredKeys() {
+  const claude   = localStorage.getItem('brw_claude_key');
+  const airtable = localStorage.getItem('brw_airtable_key');
+  if (claude)   CONFIG.CLAUDE_API_KEY  = claude;
+  if (airtable) CONFIG.AIRTABLE_TOKEN  = airtable;
+}
+function saveKeys() {
+  const claude   = $('inp-claude-key').value.trim();
+  const airtable = $('inp-airtable-key').value.trim();
+  if (claude)   { localStorage.setItem('brw_claude_key',   claude);   CONFIG.CLAUDE_API_KEY = claude; }
+  if (airtable) { localStorage.setItem('brw_airtable_key', airtable); CONFIG.AIRTABLE_TOKEN = airtable; }
+  updateKeyStatus();
+  // Brief visual feedback, then go to camera
+  $('btn-save-settings').textContent = '✓ Gespeichert!';
+  setTimeout(() => { $('btn-save-settings').textContent = 'Speichern'; startCamera(); }, 900);
+}
+function updateKeyStatus() {
+  const hasC = !!CONFIG.CLAUDE_API_KEY;
+  const hasA = !!CONFIG.AIRTABLE_TOKEN;
+  $('claude-key-status').textContent   = hasC ? '✓ gesetzt' : '✕ fehlt';
+  $('claude-key-status').className     = 'key-status ' + (hasC ? 'key-ok' : 'key-missing');
+  $('airtable-key-status').textContent = hasA ? '✓ gesetzt' : '✕ fehlt';
+  $('airtable-key-status').className   = 'key-status ' + (hasA ? 'key-ok' : 'key-missing');
+  // Prefill inputs with masked placeholders if keys already stored
+  if (hasC && !$('inp-claude-key').value)   $('inp-claude-key').placeholder   = '(gespeichert)';
+  if (hasA && !$('inp-airtable-key').value) $('inp-airtable-key').placeholder = '(gespeichert)';
+}
+loadStoredKeys();
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const CLAUDE_PROMPT = `Du bist ein Datenextraktions-Assistent für eine Autowerkstatt in der Schweiz. Analysiere dieses Foto eines Garage-Dokuments.
@@ -260,7 +331,7 @@ const $ = id => document.getElementById(id);
 const video  = $('video');
 const canvas = $('canvas');
 
-const SCREEN_IDS = ['s-camera','s-preview','s-processing','s-review','s-success','s-error','s-cam-error'];
+const SCREEN_IDS = ['s-camera','s-preview','s-processing','s-review','s-success','s-error','s-cam-error','s-settings'];
 function show(id) {
   SCREEN_IDS.forEach(s => $(s).classList.remove('active'));
   $(id).classList.add('active');
@@ -504,6 +575,9 @@ $('btn-next').addEventListener('click', startCamera);
 $('btn-err-retry').addEventListener('click', () => retryFn && retryFn());
 $('btn-err-cam').addEventListener('click', startCamera);
 $('btn-cam-retry').addEventListener('click', startCamera);
+$('btn-settings').addEventListener('click', () => { updateKeyStatus(); show('s-settings'); });
+$('btn-save-settings').addEventListener('click', saveKeys);
+$('btn-settings-back').addEventListener('click', startCamera);
 
 // ── Offline ───────────────────────────────────────────────────────────────────
 const updateOnline = () => $('offline-banner').classList.toggle('on', !navigator.onLine);
@@ -515,7 +589,12 @@ updateOnline();
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(console.warn);
 
 // ── Boot ──────────────────────────────────────────────────────────────────────
-startCamera();
+if (!CONFIG.CLAUDE_API_KEY || !CONFIG.AIRTABLE_TOKEN) {
+  updateKeyStatus();
+  show('s-settings');
+} else {
+  startCamera();
+}
 </script>
 </body>
 </html>
