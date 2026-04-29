@@ -154,7 +154,7 @@
       <p class="cam-hint">Laufblatt im Sucher positionieren und fotografieren</p>
       <button id="btn-capture" aria-label="Foto aufnehmen"></button>
       <button id="btn-upload">📄 Dokument hochladen</button>
-      <input id="file-input" type="file" accept="image/*,application/pdf" style="display:none">
+      <input id="file-input" type="file" accept="application/pdf,image/jpeg,image/jpg,image/png,image/heic,image/heif" style="display:none">
       <div id="pdf-page-selector">
         <button id="btn-pdf-prev">‹</button>
         <span id="pdf-page-info">Seite 1 von 1</span>
@@ -451,16 +451,19 @@ async function handleFile(file) {
     if (pdfDoc.numPages > 1) $('pdf-page-selector').classList.add('visible');
     else compressFromCanvas(pdfCanvas);
   } else {
-    // Image file
-    const img = new Image();
-    img.onload = () => {
-      canvas.width  = img.naturalWidth;
-      canvas.height = img.naturalHeight;
-      canvas.getContext('2d').drawImage(img, 0, 0);
-      compressFromCanvas(canvas);
-      URL.revokeObjectURL(img.src);
+    // Image file (JPEG, PNG, HEIC/HEIF, etc.) — read via FileReader
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        canvas.width  = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+        canvas.getContext('2d').drawImage(img, 0, 0);
+        compressFromCanvas(canvas);
+      };
+      img.src = e.target.result;
     };
-    img.src = URL.createObjectURL(file);
+    reader.readAsDataURL(file);
   }
 }
 
