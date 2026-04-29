@@ -1,4 +1,4 @@
-const CACHE = 'brw-v5';
+const CACHE = 'brw-v6';
 const ASSETS = ['/BRW-Garage/', '/BRW-Garage/index.html', '/BRW-Garage/manifest.json', '/BRW-Garage/icon-192.png', '/BRW-Garage/icon-512.png'];
 
 self.addEventListener('install', e => {

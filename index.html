@@ -480,6 +480,11 @@ async function handleFile(file) {
 
 // ── Claude API ────────────────────────────────────────────────────────────────
 async function analyzeWithClaude() {
+  if (!CONFIG.CLAUDE_API_KEY) {
+    showError('API-Key fehlt', 'Bitte zuerst den Claude API-Key in den Einstellungen (⚙) eingeben und speichern.');
+    return;
+  }
+
   show('s-processing');
   $('proc-title').textContent = 'Wird analysiert…';
   $('proc-sub').textContent = 'Claude Vision liest das Dokument aus';
@@ -488,6 +493,7 @@ async function analyzeWithClaude() {
   try {
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
+      mode: 'cors',
       headers: {
         'x-api-key': CONFIG.CLAUDE_API_KEY,
         'anthropic-version': '2023-06-01',
@@ -511,7 +517,16 @@ async function analyzeWithClaude() {
     rawText = data.content?.[0]?.text || '';
   } catch (err) {
     retryFn = analyzeWithClaude;
-    showError('Claude API Fehler', err.message);
+    let msg = err.message;
+    if (err instanceof TypeError && err.message.toLowerCase().includes('fetch')) {
+      msg = 'Netzwerkfehler: Verbindung zu api.anthropic.com fehlgeschlagen.\n\n' +
+            'Mögliche Ursachen:\n' +
+            '• API-Key in den Einstellungen (⚙) prüfen\n' +
+            '• Internetverbindung prüfen\n' +
+            '• Browser-Erweiterungen (AdBlocker) deaktivieren\n' +
+            '• Firmennetzwerk blockiert evtl. externe APIs';
+    }
+    showError('Claude API Fehler', msg);
     return;
   }
 
