@@ -451,15 +451,26 @@ async function handleFile(file) {
     if (pdfDoc.numPages > 1) $('pdf-page-selector').classList.add('visible');
     else compressFromCanvas(pdfCanvas);
   } else {
-    // Image file (JPEG, PNG, HEIC/HEIF, etc.) — read via FileReader
+    // Image file — compress directly from img element to avoid self-draw bug
     const reader = new FileReader();
     reader.onload = e => {
       const img = new Image();
       img.onload = () => {
-        canvas.width  = img.naturalWidth;
-        canvas.height = img.naturalHeight;
-        canvas.getContext('2d').drawImage(img, 0, 0);
-        compressFromCanvas(canvas);
+        const prefix = 'data:image/jpeg;base64,';
+        const draw = (maxPx, q) => {
+          const s = Math.min(1, maxPx / Math.max(img.naturalWidth, img.naturalHeight));
+          canvas.width  = Math.round(img.naturalWidth  * s);
+          canvas.height = Math.round(img.naturalHeight * s);
+          canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+          return canvas.toDataURL('image/jpeg', q);
+        };
+        let dataUrl = draw(1200, 0.65);
+        if (b64Bytes(dataUrl.slice(prefix.length)) > 900_000) dataUrl = draw(1200, 0.5);
+        if (b64Bytes(dataUrl.slice(prefix.length)) > 900_000) dataUrl = draw(900,  0.5);
+        compressedBase64 = dataUrl.slice(prefix.length);
+        $('preview-img').src = dataUrl;
+        $('size-info').textContent = `Bildgrösse: ${Math.round(b64Bytes(compressedBase64) / 1024)} KB`;
+        show('s-preview');
       };
       img.src = e.target.result;
     };
