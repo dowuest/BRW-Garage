@@ -13,329 +13,97 @@
   <link rel="apple-touch-icon" href="icon-192.png">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
     :root {
       --bg: #1a1a2e;
       --surface: #16213e;
+      --surface2: #0f3460;
       --accent: #4a6fa5;
       --accent-light: #6b9fd4;
+      --silver: #c0c8d8;
       --text: #ffffff;
       --text-muted: #a0b4c8;
       --success: #2ecc71;
       --error: #e74c3c;
       --warn: #f39c12;
+      --orange: #e67e22;
     }
-
-    html, body {
-      height: 100%;
-      background: var(--bg);
-      color: var(--text);
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      overflow: hidden;
-      -webkit-tap-highlight-color: transparent;
-    }
-
-    #app {
-      display: flex;
-      flex-direction: column;
-      height: 100dvh;
-      height: 100vh;
-    }
+    html, body { height: 100%; background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; overflow: hidden; -webkit-tap-highlight-color: transparent; }
+    #app { display: flex; flex-direction: column; height: 100dvh; height: 100vh; }
 
     /* ── Header ── */
-    header {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 14px 20px;
-      background: var(--surface);
-      border-bottom: 1px solid rgba(255,255,255,0.07);
-      flex-shrink: 0;
-    }
-
-    header img {
-      width: 38px;
-      height: 38px;
-      border-radius: 8px;
-      object-fit: cover;
-    }
-
-    .header-text h1 {
-      font-size: 1rem;
-      font-weight: 700;
-      letter-spacing: 0.04em;
-    }
-
-    .header-text p {
-      font-size: 0.72rem;
-      color: var(--text-muted);
-      margin-top: 1px;
-    }
-
-    /* ── Main content ── */
-    main {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 20px;
-      overflow: hidden;
-      position: relative;
-    }
+    header { display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: var(--surface); border-bottom: 1px solid rgba(255,255,255,0.08); flex-shrink: 0; }
+    header img { width: 36px; height: 36px; border-radius: 8px; object-fit: cover; }
+    .header-text h1 { font-size: 0.95rem; font-weight: 700; letter-spacing: 0.05em; }
+    .header-text p { font-size: 0.7rem; color: var(--text-muted); margin-top: 1px; }
 
     /* ── Screens ── */
-    .screen {
-      display: none;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      width: 100%;
-      height: 100%;
-      gap: 20px;
-      animation: fadeIn 0.25s ease;
-    }
+    main { flex: 1; overflow-y: auto; overflow-x: hidden; position: relative; }
+    .screen { display: none; flex-direction: column; align-items: center; min-height: 100%; padding: 16px; gap: 16px; animation: fadeIn 0.2s ease; }
     .screen.active { display: flex; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
 
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(8px); }
-      to   { opacity: 1; transform: translateY(0); }
-    }
-
-    /* ── Camera screen ── */
-    #video-container {
-      position: relative;
-      width: 100%;
-      max-width: 500px;
-      border-radius: 16px;
-      overflow: hidden;
-      background: #000;
-      aspect-ratio: 4/3;
-      box-shadow: 0 8px 32px rgba(0,0,0,0.5);
-    }
-
-    #video {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      display: block;
-    }
-
-    .viewfinder-overlay {
-      position: absolute;
-      inset: 0;
-      pointer-events: none;
-    }
-
-    .viewfinder-corner {
-      position: absolute;
-      width: 28px;
-      height: 28px;
-      border-color: rgba(255,255,255,0.8);
-      border-style: solid;
-    }
-    .viewfinder-corner.tl { top: 16px; left: 16px; border-width: 3px 0 0 3px; border-radius: 4px 0 0 0; }
-    .viewfinder-corner.tr { top: 16px; right: 16px; border-width: 3px 3px 0 0; border-radius: 0 4px 0 0; }
-    .viewfinder-corner.bl { bottom: 16px; left: 16px; border-width: 0 0 3px 3px; border-radius: 0 0 0 4px; }
-    .viewfinder-corner.br { bottom: 16px; right: 16px; border-width: 0 3px 3px 0; border-radius: 0 0 4px 0; }
-
-    .camera-hint {
-      font-size: 0.82rem;
-      color: var(--text-muted);
-      text-align: center;
-    }
-
-    /* ── Shutter button ── */
-    #btn-capture {
-      width: 84px;
-      height: 84px;
-      border-radius: 50%;
-      border: 4px solid #fff;
-      background: transparent;
-      cursor: pointer;
-      position: relative;
-      transition: transform 0.1s;
-      flex-shrink: 0;
-    }
-    #btn-capture::after {
-      content: '';
-      position: absolute;
-      inset: 6px;
-      background: #fff;
-      border-radius: 50%;
-      transition: background 0.15s;
-    }
-    #btn-capture:active { transform: scale(0.93); }
+    /* ── Camera ── */
+    #video-wrap { position: relative; width: 100%; max-width: 480px; border-radius: 14px; overflow: hidden; background: #000; aspect-ratio: 4/3; box-shadow: 0 8px 32px rgba(0,0,0,0.6); }
+    #video { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .corner { position: absolute; width: 24px; height: 24px; border-color: rgba(255,255,255,0.85); border-style: solid; }
+    .corner.tl { top:14px; left:14px; border-width: 3px 0 0 3px; border-radius: 3px 0 0 0; }
+    .corner.tr { top:14px; right:14px; border-width: 3px 3px 0 0; border-radius: 0 3px 0 0; }
+    .corner.bl { bottom:14px; left:14px; border-width: 0 0 3px 3px; border-radius: 0 0 0 3px; }
+    .corner.br { bottom:14px; right:14px; border-width: 0 3px 3px 0; border-radius: 0 0 0 3px; }
+    .cam-hint { font-size: 0.8rem; color: var(--text-muted); text-align: center; }
+    #btn-capture { width: 80px; height: 80px; border-radius: 50%; border: 4px solid #fff; background: transparent; cursor: pointer; position: relative; flex-shrink: 0; transition: transform 0.1s; }
+    #btn-capture::after { content: ''; position: absolute; inset: 6px; background: #fff; border-radius: 50%; transition: background 0.15s; }
+    #btn-capture:active { transform: scale(0.92); }
     #btn-capture:active::after { background: #ccc; }
 
-    /* ── Preview screen ── */
-    #preview-img {
-      width: 100%;
-      max-width: 500px;
-      border-radius: 16px;
-      box-shadow: 0 8px 32px rgba(0,0,0,0.5);
-      object-fit: contain;
-      max-height: 55vh;
-    }
+    /* ── Preview ── */
+    #preview-img { width: 100%; max-width: 480px; border-radius: 14px; object-fit: contain; max-height: 50vh; box-shadow: 0 8px 32px rgba(0,0,0,0.5); }
 
-    .preview-label {
-      font-size: 0.82rem;
-      color: var(--text-muted);
-    }
-
-    .btn-row {
-      display: flex;
-      gap: 14px;
-      width: 100%;
-      max-width: 400px;
-    }
-
-    .btn {
-      flex: 1;
-      padding: 18px 10px;
-      border: none;
-      border-radius: 14px;
-      font-size: 1rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition: transform 0.1s, opacity 0.15s;
-      letter-spacing: 0.02em;
-    }
+    /* ── Buttons ── */
+    .btn-row { display: flex; gap: 12px; width: 100%; max-width: 480px; }
+    .btn { flex: 1; min-height: 52px; border: none; border-radius: 12px; font-size: 0.95rem; font-weight: 600; cursor: pointer; transition: transform 0.1s; letter-spacing: 0.01em; padding: 0 12px; }
     .btn:active { transform: scale(0.96); }
+    .btn-secondary { background: rgba(255,255,255,0.1); color: var(--text); }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-success { background: var(--success); color: #fff; }
 
-    .btn-secondary {
-      background: rgba(255,255,255,0.1);
-      color: var(--text);
-    }
-    .btn-secondary:hover { background: rgba(255,255,255,0.15); }
-
-    .btn-primary {
-      background: var(--accent);
-      color: #fff;
-    }
-    .btn-primary:hover { background: var(--accent-light); }
-
-    /* ── Upload / status screen ── */
-    .status-icon {
-      width: 80px;
-      height: 80px;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 2.2rem;
-    }
-
-    .status-icon.sending {
-      background: rgba(74, 111, 165, 0.2);
-      border: 3px solid var(--accent);
-    }
-
-    .status-icon.success {
-      background: rgba(46, 204, 113, 0.15);
-      border: 3px solid var(--success);
-    }
-
-    .status-icon.error {
-      background: rgba(231, 76, 60, 0.15);
-      border: 3px solid var(--error);
-    }
-
-    .status-title {
-      font-size: 1.25rem;
-      font-weight: 700;
-      text-align: center;
-    }
-
-    .status-sub {
-      font-size: 0.85rem;
-      color: var(--text-muted);
-      text-align: center;
-      max-width: 280px;
-      line-height: 1.5;
-    }
-
-    /* Spinner */
-    .spinner {
-      width: 44px;
-      height: 44px;
-      border: 4px solid rgba(255,255,255,0.15);
-      border-top-color: var(--accent-light);
-      border-radius: 50%;
-      animation: spin 0.75s linear infinite;
-    }
+    /* ── Processing ── */
+    .processing-box { display: flex; flex-direction: column; align-items: center; gap: 20px; margin-top: 60px; }
+    .spinner { width: 52px; height: 52px; border: 4px solid rgba(255,255,255,0.12); border-top-color: var(--accent-light); border-radius: 50%; animation: spin 0.8s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
+    .proc-title { font-size: 1.15rem; font-weight: 700; }
+    .proc-sub { font-size: 0.82rem; color: var(--text-muted); text-align: center; }
 
-    /* ── Error screen ── */
-    .error-icon { font-size: 3.5rem; }
+    /* ── Review ── */
+    .review-top { width: 100%; max-width: 600px; display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+    .doctype-badge { display: inline-flex; align-items: center; padding: 8px 16px; border-radius: 20px; font-size: 0.82rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; background: var(--surface2); border: 1px solid var(--accent); color: var(--accent-light); }
+    .conf-badge { display: inline-flex; align-items: center; padding: 6px 12px; border-radius: 12px; font-size: 0.78rem; font-weight: 700; }
+    .conf-green { background: rgba(46,204,113,0.18); color: var(--success); border: 1px solid var(--success); }
+    .conf-orange { background: rgba(243,156,18,0.18); color: var(--warn); border: 1px solid var(--warn); }
+    .conf-red { background: rgba(231,76,60,0.18); color: var(--error); border: 1px solid var(--error); }
+    .fields-wrap { width: 100%; max-width: 600px; display: flex; flex-direction: column; gap: 10px; }
+    .field-group { background: var(--surface); border-radius: 12px; padding: 14px; }
+    .field-label { font-size: 0.68rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 5px; }
+    .field-input { width: 100%; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; color: var(--text); font-size: 0.88rem; padding: 10px 12px; font-family: inherit; resize: vertical; }
+    .field-input:focus { outline: none; border-color: var(--accent); }
+    .field-input.uncertain { border-color: var(--orange) !important; background: rgba(230,126,34,0.08); }
+    .sec-title { font-size: 0.72rem; font-weight: 700; color: var(--silver); text-transform: uppercase; letter-spacing: 0.08em; padding-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.07); margin-bottom: 10px; }
+    .field-row { margin-bottom: 10px; }
+    .field-row:last-child { margin-bottom: 0; }
+    .review-actions { width: 100%; max-width: 600px; display: flex; flex-direction: column; gap: 10px; padding-bottom: 24px; }
 
-    .error-title {
-      font-size: 1.2rem;
-      font-weight: 700;
-      text-align: center;
-      color: var(--warn);
-    }
+    /* ── Result ── */
+    .result-icon { width: 72px; height: 72px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2rem; margin-top: 40px; }
+    .result-title { font-size: 1.2rem; font-weight: 700; text-align: center; }
+    .result-sub { font-size: 0.83rem; color: var(--text-muted); text-align: center; max-width: 300px; line-height: 1.6; white-space: pre-wrap; }
+    .error-box { background: rgba(231,76,60,0.1); border: 1px solid rgba(231,76,60,0.3); border-radius: 12px; padding: 16px; width: 100%; max-width: 480px; }
+    .error-box p { font-size: 0.83rem; color: #f5a5a0; line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
 
-    .error-msg {
-      font-size: 0.85rem;
-      color: var(--text-muted);
-      text-align: center;
-      max-width: 300px;
-      line-height: 1.6;
-    }
-
-    /* ── Offline banner ── */
-    #offline-banner {
-      display: none;
-      position: fixed;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      background: var(--warn);
-      color: #1a1a2e;
-      text-align: center;
-      padding: 10px;
-      font-size: 0.82rem;
-      font-weight: 600;
-      z-index: 100;
-    }
-    #offline-banner.visible { display: block; }
-
-    /* ── Install prompt ── */
-    #install-banner {
-      display: none;
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      background: var(--surface);
-      border-bottom: 1px solid rgba(255,255,255,0.1);
-      padding: 12px 16px;
-      font-size: 0.82rem;
-      z-index: 100;
-      gap: 10px;
-      align-items: center;
-    }
-    #install-banner.visible { display: flex; }
-    #install-banner span { flex: 1; color: var(--text-muted); }
-    #btn-install {
-      padding: 8px 16px;
-      background: var(--accent);
-      color: #fff;
-      border: none;
-      border-radius: 8px;
-      font-size: 0.8rem;
-      font-weight: 600;
-      cursor: pointer;
-    }
-    #btn-dismiss-install {
-      background: none;
-      border: none;
-      color: var(--text-muted);
-      font-size: 1.1rem;
-      cursor: pointer;
-      padding: 4px;
-    }
+    /* ── Banners ── */
+    #offline-banner { display: none; position: fixed; bottom: 0; left: 0; right: 0; background: var(--warn); color: #1a1a2e; text-align: center; padding: 10px; font-size: 0.8rem; font-weight: 600; z-index: 200; }
+    #offline-banner.on { display: block; }
+    #config-warn { display: none; position: fixed; top: 0; left: 0; right: 0; background: var(--error); color: #fff; text-align: center; padding: 9px 16px; font-size: 0.78rem; font-weight: 600; z-index: 300; }
+    #config-warn.on { display: block; }
   </style>
 </head>
 <body>
@@ -343,280 +111,411 @@
   <header>
     <img src="icon-192.png" alt="BRW Logo" onerror="this.style.display='none'">
     <div class="header-text">
-      <h1>BRW GARAGE</h1>
+      <h1>BRW GARAGE LANGNAU</h1>
       <p>Laufblätter Scanner</p>
     </div>
   </header>
+  <main id="main">
 
-  <main>
-    <!-- Camera screen -->
-    <div id="screen-camera" class="screen active">
-      <div id="video-container">
+    <!-- Camera -->
+    <div id="s-camera" class="screen active">
+      <div id="video-wrap">
         <video id="video" autoplay playsinline muted></video>
-        <div class="viewfinder-overlay">
-          <div class="viewfinder-corner tl"></div>
-          <div class="viewfinder-corner tr"></div>
-          <div class="viewfinder-corner bl"></div>
-          <div class="viewfinder-corner br"></div>
-        </div>
+        <div class="corner tl"></div><div class="corner tr"></div>
+        <div class="corner bl"></div><div class="corner br"></div>
       </div>
-      <p class="camera-hint">Laufblatt im Sucher positionieren</p>
+      <p class="cam-hint">Laufblatt im Sucher positionieren und fotografieren</p>
       <button id="btn-capture" aria-label="Foto aufnehmen"></button>
     </div>
 
-    <!-- Preview screen -->
-    <div id="screen-preview" class="screen">
+    <!-- Preview -->
+    <div id="s-preview" class="screen">
       <img id="preview-img" src="" alt="Vorschau">
-      <p class="preview-label">Foto überprüfen</p>
+      <p class="cam-hint" id="size-info" style="color:var(--text-muted)"></p>
       <div class="btn-row">
         <button class="btn btn-secondary" id="btn-retake">↩ Wiederholen</button>
-        <button class="btn btn-primary" id="btn-confirm">Senden ✓</button>
+        <button class="btn btn-primary" id="btn-analyze">Analysieren →</button>
       </div>
     </div>
 
-    <!-- Uploading screen -->
-    <div id="screen-uploading" class="screen">
-      <div class="spinner"></div>
-      <p class="status-title">Wird gesendet…</p>
-      <p class="status-sub">Laufblatt wird übertragen und verarbeitet</p>
-    </div>
-
-    <!-- Success screen -->
-    <div id="screen-success" class="screen">
-      <div class="status-icon success">✓</div>
-      <p class="status-title">Erfolgreich gesendet!</p>
-      <p class="status-sub">Das Laufblatt wurde übermittelt und wird verarbeitet.</p>
-      <p class="status-sub" id="success-filename" style="color:var(--accent-light); font-size:0.78rem;"></p>
-    </div>
-
-    <!-- Error (upload) screen -->
-    <div id="screen-error" class="screen">
-      <div class="status-icon error">✕</div>
-      <p class="status-title">Fehler beim Senden</p>
-      <p class="status-sub" id="error-detail">Die Verbindung zum Server konnte nicht hergestellt werden.</p>
-      <div class="btn-row" style="max-width:300px; margin-top:8px;">
-        <button class="btn btn-secondary" id="btn-retry-upload">Erneut senden</button>
-        <button class="btn btn-primary" id="btn-new-photo">Neues Foto</button>
+    <!-- Processing -->
+    <div id="s-processing" class="screen">
+      <div class="processing-box">
+        <div class="spinner"></div>
+        <p class="proc-title" id="proc-title">Wird analysiert…</p>
+        <p class="proc-sub" id="proc-sub">Claude Vision liest das Dokument</p>
       </div>
     </div>
 
-    <!-- Camera permission error screen -->
-    <div id="screen-cam-error" class="screen">
-      <div class="error-icon">📷</div>
-      <p class="error-title">Kamera nicht verfügbar</p>
-      <p class="error-msg" id="cam-error-msg">
-        Die Kamera konnte nicht geöffnet werden. Bitte erteilen Sie der App die Kameraberechtigung in den Geräteeinstellungen.
-      </p>
-      <button class="btn btn-primary" id="btn-retry-cam" style="max-width:260px; margin-top:8px;">
-        Erneut versuchen
-      </button>
+    <!-- Review -->
+    <div id="s-review" class="screen">
+      <div class="review-top">
+        <span class="doctype-badge" id="doctype-label">–</span>
+        <span class="conf-badge" id="conf-badge">–</span>
+      </div>
+      <div class="fields-wrap" id="fields-wrap"></div>
+      <div class="review-actions">
+        <button class="btn btn-success" id="btn-confirm">✓ Bestätigen &amp; Speichern</button>
+        <button class="btn btn-secondary" id="btn-review-retake">↩ Nochmal fotografieren</button>
+      </div>
     </div>
+
+    <!-- Success -->
+    <div id="s-success" class="screen">
+      <div class="result-icon" style="background:rgba(46,204,113,0.15);border:2px solid var(--success)">✓</div>
+      <p class="result-title">Gespeichert!</p>
+      <p class="result-sub" id="success-detail"></p>
+      <button class="btn btn-primary" id="btn-next" style="max-width:280px;margin-top:8px">Nächstes Dokument</button>
+    </div>
+
+    <!-- Error -->
+    <div id="s-error" class="screen">
+      <div class="result-icon" style="background:rgba(231,76,60,0.15);border:2px solid var(--error);margin-top:20px">✕</div>
+      <p class="result-title" id="err-title">Fehler</p>
+      <div class="error-box"><p id="err-msg"></p></div>
+      <div class="btn-row" style="max-width:400px">
+        <button class="btn btn-secondary" id="btn-err-retry">Erneut versuchen</button>
+        <button class="btn btn-primary" id="btn-err-cam">Neue Aufnahme</button>
+      </div>
+    </div>
+
+    <!-- Camera error -->
+    <div id="s-cam-error" class="screen">
+      <div class="result-icon" style="font-size:2.2rem;background:rgba(243,156,18,0.15);border:2px solid var(--warn);margin-top:20px">📷</div>
+      <p class="result-title" style="color:var(--warn)">Kamera nicht verfügbar</p>
+      <div class="error-box"><p id="cam-err-msg"></p></div>
+      <button class="btn btn-primary" id="btn-cam-retry" style="max-width:280px">Erneut versuchen</button>
+    </div>
+
   </main>
 </div>
 
-<div id="offline-banner">⚠ Keine Internetverbindung – Fotos können nicht gesendet werden</div>
-
-<div id="install-banner">
-  <span>App auf dem Startbildschirm installieren?</span>
-  <button id="btn-install">Installieren</button>
-  <button id="btn-dismiss-install">✕</button>
-</div>
-
+<div id="offline-banner">⚠ Keine Internetverbindung</div>
+<div id="config-warn">⚠ config.js nicht gefunden – API-Keys fehlen. Siehe README.</div>
 <canvas id="canvas" style="display:none"></canvas>
 
+<script src="config.js" onerror="window._noConfig=true"></script>
 <script>
-  const WEBHOOK_URL = 'https://hook.eu1.make.com/miq6ugjn8lprsxxxsfrhwavtjzieoocs';
-  const MAX_BYTES = 1_000_000;
+'use strict';
 
-  // ── State ──────────────────────────────────────────────────────────────────
-  let stream = null;
-  let capturedDataUrl = null;
-  let lastFilename = null;
-  let lastBase64 = null;
-  let deferredInstallPrompt = null;
+// ── Config ────────────────────────────────────────────────────────────────────
+if (window._noConfig || typeof CONFIG === 'undefined') {
+  document.getElementById('config-warn').classList.add('on');
+  window.CONFIG = { CLAUDE_API_KEY: '', AIRTABLE_TOKEN: '', AIRTABLE_BASE_ID: 'appo9ljZERNttZXEA' };
+}
 
-  // ── Elements ───────────────────────────────────────────────────────────────
-  const video         = document.getElementById('video');
-  const canvas        = document.getElementById('canvas');
-  const previewImg    = document.getElementById('preview-img');
-  const successFile   = document.getElementById('success-filename');
-  const errorDetail   = document.getElementById('error-detail');
-  const camErrorMsg   = document.getElementById('cam-error-msg');
-  const offlineBanner = document.getElementById('offline-banner');
-  const installBanner = document.getElementById('install-banner');
+// ── Constants ─────────────────────────────────────────────────────────────────
+const CLAUDE_PROMPT = `Du bist ein Datenextraktions-Assistent für eine Autowerkstatt in der Schweiz. Analysiere dieses Foto eines Garage-Dokuments.
 
-  const screens = {
-    camera:    document.getElementById('screen-camera'),
-    preview:   document.getElementById('screen-preview'),
-    uploading: document.getElementById('screen-uploading'),
-    success:   document.getElementById('screen-success'),
-    error:     document.getElementById('screen-error'),
-    camError:  document.getElementById('screen-cam-error'),
-  };
+Bestimme zuerst den Dokumenttyp:
+- einlagerungsschein: Grauer Balken mit Einlagerungs-Nr., Felder für Profiltiefe VL/VR/HL/HR, Checkboxen für Radart und Pneuart
+- werkstatt_auftrag: 'Werkstatt - Auftrag' als Titel oben, Fahrzeug-Datentabelle, Feld Km neu handschriftlich, Barcode oben rechts
+- servicelaufblatt: Zwei Checklisten-Tabellen mit Codes wie PR1/WS1/PW1, keine Kundendaten sichtbar
 
-  // ── Screen navigation ──────────────────────────────────────────────────────
-  function showScreen(name) {
-    Object.values(screens).forEach(s => s.classList.remove('active'));
-    screens[name].classList.add('active');
+Extrahiere dann ALLE sichtbaren Felder des erkannten Dokumenttyps.
+
+Wichtig für Werkstatt-Aufträge: Extrahiere ALLE handschriftlichen Texte unterhalb der gedruckten Tabelle vollständig — diese enthalten die Verrechnungsinformationen. Auch gelb markierte Texte, aufgeklebte Etiketten und Preisnotizen müssen erfasst werden. Bei unlesbaren Zahlenwerten gib 99999 zurück.
+
+Antworte NUR mit rohem validem JSON ohne Markdown-Backticks:
+{"dokumenttyp": "einlagerungsschein|werkstatt_auftrag|servicelaufblatt", "felder": {...}, "confidence": 0.0, "unsichere_felder": []}`;
+
+const FIELD_LABELS = {
+  einlagerungs_nr:'Einlagerungs-Nr.', datum_eroffnet:'Datum eröffnet', annehmer:'Annehmer',
+  auftrag_nr:'Auftrags-Nr.', annahme_datum:'Annahmedatum', termin_datum:'Termin',
+  kunde_name:'Kundenname', kunde_adresse:'Adresse', kunde_ort:'Ort', kunde_mobil:'Mobil',
+  fahrzeug_bezeichnung:'Fahrzeug', kennschild:'Kennzeichen', chassisnr:'Chassis-Nr.',
+  erst_inverkehrssetzung:'Erst-Inverkehrssetzung', reifenmarke:'Reifenmarke',
+  reifendimension:'Reifendimension', profiltiefe_VL:'Profiltiefe VL (mm)',
+  profiltiefe_VR:'Profiltiefe VR (mm)', profiltiefe_HL:'Profiltiefe HL (mm)',
+  profiltiefe_HR:'Profiltiefe HR (mm)', radart:'Radart', pneuart:'Pneuart',
+  alter_lagerort:'Alter Lagerort', bemerkungen:'Bemerkungen', fahrzeug:'Fahrzeug',
+  km_alt:'Km alt', km_neu:'Km neu', mechaniker:'Mechaniker', annahme_uhrzeit:'Annahmezeit',
+  arbeiten:'Arbeiten', notizen:'Notizen', hervorgehoben:'Hervorgehoben',
+  reifenetikett:'Reifenetikett', verbrauchsmaterial:'Verbrauchsmaterial'
+};
+
+const DOCTYPE_LABELS = {
+  einlagerungsschein:'Einlagerungsschein',
+  werkstatt_auftrag:'Werkstatt-Auftrag',
+  servicelaufblatt:'Servicelaufblatt'
+};
+
+const TABLE_MAP = {
+  einlagerungsschein:'Einlagerungsscheine',
+  werkstatt_auftrag:'Werkstatt_Auftraege',
+  servicelaufblatt:'Servicelaufblaetter'
+};
+
+const NUMBER_FIELDS = new Set(['profiltiefe_VL','profiltiefe_VR','profiltiefe_HL','profiltiefe_HR','confidence']);
+const ARRAY_FIELDS  = new Set(['arbeiten','notizen','hervorgehoben','reifenetikett','verbrauchsmaterial']);
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let stream = null;
+let compressedBase64 = null;
+let lastResult = null;
+let retryFn = null;
+
+// ── DOM helpers ───────────────────────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+const video  = $('video');
+const canvas = $('canvas');
+
+const SCREEN_IDS = ['s-camera','s-preview','s-processing','s-review','s-success','s-error','s-cam-error'];
+function show(id) {
+  SCREEN_IDS.forEach(s => $(s).classList.remove('active'));
+  $(id).classList.add('active');
+}
+
+// ── Camera ────────────────────────────────────────────────────────────────────
+async function startCamera() {
+  if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } },
+      audio: false
+    });
+    video.srcObject = stream;
+    show('s-camera');
+  } catch (err) {
+    let msg = 'Die Kamera konnte nicht geöffnet werden.';
+    if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError')
+      msg = 'Kamerazugriff verweigert. Bitte erlauben Sie den Kamerazugriff in den Browser-/Geräteeinstellungen und laden Sie die Seite neu.';
+    else if (err.name === 'NotFoundError')
+      msg = 'Keine Kamera gefunden auf diesem Gerät.';
+    else if (err.name === 'NotReadableError')
+      msg = 'Kamera wird von einer anderen App verwendet. Bitte schliessen Sie diese zuerst.';
+    $('cam-err-msg').textContent = msg;
+    show('s-cam-error');
+  }
+}
+
+// ── Capture & compress ────────────────────────────────────────────────────────
+function b64Bytes(b64) { return Math.round(b64.length * 0.75); }
+
+function drawFrame(maxPx, quality) {
+  const w = video.videoWidth || 1280, h = video.videoHeight || 720;
+  const scale = Math.min(1, maxPx / Math.max(w, h));
+  canvas.width  = Math.round(w * scale);
+  canvas.height = Math.round(h * scale);
+  canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+  return canvas.toDataURL('image/jpeg', quality);
+}
+
+function captureAndCompress() {
+  const prefix = 'data:image/jpeg;base64,';
+  let dataUrl = drawFrame(1200, 0.65);
+  if (b64Bytes(dataUrl.slice(prefix.length)) > 900_000) dataUrl = drawFrame(1200, 0.5);
+  if (b64Bytes(dataUrl.slice(prefix.length)) > 900_000) dataUrl = drawFrame(900, 0.5);
+  compressedBase64 = dataUrl.slice(prefix.length);
+  $('preview-img').src = dataUrl;
+  $('size-info').textContent = `Bildgrösse: ${Math.round(b64Bytes(compressedBase64) / 1024)} KB`;
+  show('s-preview');
+}
+
+// ── Claude API ────────────────────────────────────────────────────────────────
+async function analyzeWithClaude() {
+  show('s-processing');
+  $('proc-title').textContent = 'Wird analysiert…';
+  $('proc-sub').textContent = 'Claude Vision liest das Dokument aus';
+
+  let rawText;
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key': CONFIG.CLAUDE_API_KEY,
+        'anthropic-version': '2023-06-01',
+        'content-type': 'application/json',
+        'anthropic-dangerous-direct-browser-calls': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-opus-4-5',
+        max_tokens: 2000,
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: compressedBase64 } },
+            { type: 'text', text: CLAUDE_PROMPT }
+          ]
+        }]
+      })
+    });
+    if (!res.ok) { const t = await res.text(); throw new Error(`Claude API ${res.status}: ${t}`); }
+    const data = await res.json();
+    rawText = data.content?.[0]?.text || '';
+  } catch (err) {
+    retryFn = analyzeWithClaude;
+    showError('Claude API Fehler', err.message);
+    return;
   }
 
-  // ── Camera ─────────────────────────────────────────────────────────────────
-  async function startCamera() {
-    if (stream) {
-      stream.getTracks().forEach(t => t.stop());
-      stream = null;
-    }
-    try {
-      stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: { ideal: 'environment' },
-          width:  { ideal: 1920 },
-          height: { ideal: 1080 }
-        },
-        audio: false
-      });
-      video.srcObject = stream;
-      showScreen('camera');
-    } catch (err) {
-      let msg = 'Die Kamera konnte nicht geöffnet werden.';
-      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-        msg = 'Kamerazugriff wurde verweigert. Bitte erlauben Sie den Kamerazugriff in den Einstellungen Ihres Browsers/Geräts und laden Sie die Seite neu.';
-      } else if (err.name === 'NotFoundError') {
-        msg = 'Keine Kamera gefunden. Stellen Sie sicher, dass Ihr Gerät eine Kamera hat.';
-      } else if (err.name === 'NotReadableError') {
-        msg = 'Die Kamera wird bereits von einer anderen App verwendet. Bitte schließen Sie diese und versuchen Sie es erneut.';
-      }
-      camErrorMsg.textContent = msg;
-      showScreen('camError');
-    }
+  let parsed;
+  try {
+    const clean = rawText.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
+    parsed = JSON.parse(clean);
+  } catch {
+    retryFn = analyzeWithClaude;
+    showError('Ungültige Antwort', 'Claude hat kein gültiges JSON zurückgegeben:\n\n' + rawText);
+    return;
   }
 
-  // ── Capture ────────────────────────────────────────────────────────────────
-  function capturePhoto() {
-    const w = video.videoWidth  || 1280;
-    const h = video.videoHeight || 720;
-    canvas.width  = w;
-    canvas.height = h;
-    canvas.getContext('2d').drawImage(video, 0, 0, w, h);
+  lastResult = parsed;
+  buildReview(parsed);
+}
 
-    // Compress: start at quality 0.85, reduce until under MAX_BYTES
-    let quality = 0.85;
-    let dataUrl;
-    do {
-      dataUrl = canvas.toDataURL('image/jpeg', quality);
-      // base64 payload size ≈ (dataUrl.length - prefix.length) * 0.75
-      const prefixLen = 'data:image/jpeg;base64,'.length;
-      const byteSize  = Math.round((dataUrl.length - prefixLen) * 0.75);
-      if (byteSize <= MAX_BYTES || quality <= 0.2) break;
-      quality -= 0.1;
-    } while (true);
+// ── Review screen ─────────────────────────────────────────────────────────────
+function buildReview(parsed) {
+  const { dokumenttyp, felder = {}, confidence = 0, unsichere_felder = [] } = parsed;
+  const uncertain = new Set((unsichere_felder || []).map(f => String(f).toLowerCase()));
 
-    capturedDataUrl = dataUrl;
-    previewImg.src  = dataUrl;
-    showScreen('preview');
-  }
+  // Badges
+  $('doctype-label').textContent = DOCTYPE_LABELS[dokumenttyp] || dokumenttyp;
+  const cb = $('conf-badge');
+  const pct = Math.round((confidence || 0) * 100);
+  cb.textContent = `${pct}% Konfidenz`;
+  cb.className = 'conf-badge ' + (confidence > 0.85 ? 'conf-green' : confidence > 0.70 ? 'conf-orange' : 'conf-red');
 
-  // ── Upload ─────────────────────────────────────────────────────────────────
-  async function uploadPhoto() {
-    const prefix  = 'data:image/jpeg;base64,';
-    const base64  = capturedDataUrl.startsWith(prefix)
-      ? capturedDataUrl.slice(prefix.length)
-      : capturedDataUrl;
+  // Build field groups
+  const wrap = $('fields-wrap');
+  wrap.innerHTML = '';
 
-    const ts       = new Date().toISOString();
-    const filename = `laufblatt_${ts.replace(/[:.]/g, '-')}.jpg`;
+  const simpleEntries = Object.entries(felder).filter(([k]) => !ARRAY_FIELDS.has(k));
+  const complexEntries = Object.entries(felder).filter(([k]) => ARRAY_FIELDS.has(k));
 
-    lastBase64   = base64;
-    lastFilename = filename;
-
-    const body = JSON.stringify({ image_base64: base64, filename, timestamp: ts });
-
-    // Validate JSON
-    try { JSON.parse(body); } catch {
-      errorDetail.textContent = 'Interner Fehler: ungültige Daten. Bitte erneut versuchen.';
-      showScreen('error');
-      return;
-    }
-
-    showScreen('uploading');
-
-    try {
-      const res = await fetch(WEBHOOK_URL, {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body
-      });
-
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
-      successFile.textContent = filename;
-      showScreen('success');
-
-      // Auto-reset after 3 s
-      setTimeout(() => startCamera(), 3000);
-
-    } catch (err) {
-      if (!navigator.onLine) {
-        errorDetail.textContent = 'Keine Internetverbindung. Bitte Verbindung herstellen und erneut versuchen.';
+  // Simple fields
+  if (simpleEntries.length) {
+    const grp = makeGroup('Extrahierte Felder');
+    simpleEntries.forEach(([key, val]) => {
+      if (key === 'unsichere_felder') return;
+      const strVal = val === null || val === undefined ? '' : String(val);
+      const isUncertain = uncertain.has(key.toLowerCase());
+      const label = FIELD_LABELS[key] || key;
+      const long = strVal.length > 60;
+      const row = document.createElement('div');
+      row.className = 'field-row';
+      if (long) {
+        row.innerHTML = `<div class="field-label">${label}${isUncertain ? ' ⚠' : ''}</div>
+          <textarea class="field-input${isUncertain ? ' uncertain' : ''}" data-key="${key}" rows="2">${escHtml(strVal)}</textarea>`;
       } else {
-        errorDetail.textContent = `Verbindungsfehler: ${err.message}`;
+        row.innerHTML = `<div class="field-label">${label}${isUncertain ? ' ⚠' : ''}</div>
+          <input type="text" class="field-input${isUncertain ? ' uncertain' : ''}" data-key="${key}" value="${escAttr(strVal)}">`;
       }
-      showScreen('error');
+      grp.appendChild(row);
+    });
+    wrap.appendChild(grp);
+  }
+
+  // Array / complex fields
+  complexEntries.forEach(([key, val]) => {
+    const label = FIELD_LABELS[key] || key;
+    const display = typeof val === 'string' ? val : JSON.stringify(val, null, 2);
+    const lines = (display.match(/\n/g) || []).length + 3;
+    const grp = makeGroup(label);
+    const row = document.createElement('div');
+    row.className = 'field-row';
+    row.innerHTML = `<textarea class="field-input" data-key="${key}" rows="${Math.min(12, lines)}">${escHtml(display)}</textarea>`;
+    grp.appendChild(row);
+    wrap.appendChild(grp);
+  });
+
+  show('s-review');
+}
+
+function makeGroup(title) {
+  const g = document.createElement('div');
+  g.className = 'field-group';
+  g.innerHTML = `<div class="sec-title">${title}</div>`;
+  return g;
+}
+
+function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function escAttr(s) { return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;'); }
+
+// ── Collect edits ─────────────────────────────────────────────────────────────
+function collectEdits() {
+  const out = {};
+  $('fields-wrap').querySelectorAll('[data-key]').forEach(el => {
+    out[el.dataset.key] = el.value;
+  });
+  return out;
+}
+
+// ── Airtable save ─────────────────────────────────────────────────────────────
+async function saveToAirtable() {
+  const { dokumenttyp, felder = {}, confidence = 0 } = lastResult;
+  const tableName = TABLE_MAP[dokumenttyp];
+  if (!tableName) { showError('Unbekannter Typ', `"${dokumenttyp}" wird nicht unterstützt.`); return; }
+
+  show('s-processing');
+  $('proc-title').textContent = 'Wird gespeichert…';
+  $('proc-sub').textContent = `Airtable: ${DOCTYPE_LABELS[dokumenttyp]}`;
+
+  const edits = collectEdits();
+  const merged = { ...felder, ...edits };
+
+  const fields = {};
+  Object.entries(merged).forEach(([k, v]) => {
+    if (k === 'unsichere_felder') return;
+    if (ARRAY_FIELDS.has(k)) {
+      fields[k] = typeof v === 'string' ? v : JSON.stringify(v);
+    } else if (NUMBER_FIELDS.has(k)) {
+      const n = parseFloat(String(v).replace(',', '.'));
+      fields[k] = isNaN(n) ? 99999 : n;
+    } else {
+      fields[k] = v === null || v === undefined ? '' : String(v);
     }
+  });
+  fields.confidence = typeof confidence === 'number' ? confidence : parseFloat(confidence) || 0;
+
+  try {
+    const res = await fetch(
+      `https://api.airtable.com/v0/${CONFIG.AIRTABLE_BASE_ID}/${encodeURIComponent(tableName)}`,
+      {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${CONFIG.AIRTABLE_TOKEN}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ records: [{ fields }] })
+      }
+    );
+    if (!res.ok) { const t = await res.text(); throw new Error(`Airtable ${res.status}: ${t}`); }
+    const data = await res.json();
+    const recId = data.records?.[0]?.id || '–';
+    $('success-detail').textContent = `${DOCTYPE_LABELS[dokumenttyp]} in „${tableName}" gespeichert.\nDatensatz-ID: ${recId}`;
+    show('s-success');
+  } catch (err) {
+    retryFn = saveToAirtable;
+    showError('Airtable Fehler', err.message);
   }
+}
 
-  // ── Event listeners ────────────────────────────────────────────────────────
-  document.getElementById('btn-capture').addEventListener('click', capturePhoto);
+// ── Error helper ──────────────────────────────────────────────────────────────
+function showError(title, msg) {
+  $('err-title').textContent = title;
+  $('err-msg').textContent = msg;
+  show('s-error');
+}
 
-  document.getElementById('btn-retake').addEventListener('click', () => {
-    capturedDataUrl = null;
-    showScreen('camera');
-  });
+// ── Events ────────────────────────────────────────────────────────────────────
+$('btn-capture').addEventListener('click', captureAndCompress);
+$('btn-retake').addEventListener('click', () => show('s-camera'));
+$('btn-analyze').addEventListener('click', analyzeWithClaude);
+$('btn-confirm').addEventListener('click', saveToAirtable);
+$('btn-review-retake').addEventListener('click', startCamera);
+$('btn-next').addEventListener('click', startCamera);
+$('btn-err-retry').addEventListener('click', () => retryFn && retryFn());
+$('btn-err-cam').addEventListener('click', startCamera);
+$('btn-cam-retry').addEventListener('click', startCamera);
 
-  document.getElementById('btn-confirm').addEventListener('click', uploadPhoto);
+// ── Offline ───────────────────────────────────────────────────────────────────
+const updateOnline = () => $('offline-banner').classList.toggle('on', !navigator.onLine);
+window.addEventListener('online', updateOnline);
+window.addEventListener('offline', updateOnline);
+updateOnline();
 
-  document.getElementById('btn-retry-upload').addEventListener('click', () => {
-    if (capturedDataUrl) uploadPhoto();
-  });
+// ── Service worker ────────────────────────────────────────────────────────────
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(console.warn);
 
-  document.getElementById('btn-new-photo').addEventListener('click', startCamera);
-
-  document.getElementById('btn-retry-cam').addEventListener('click', startCamera);
-
-  // ── Offline detection ──────────────────────────────────────────────────────
-  function updateOnlineStatus() {
-    offlineBanner.classList.toggle('visible', !navigator.onLine);
-  }
-  window.addEventListener('online',  updateOnlineStatus);
-  window.addEventListener('offline', updateOnlineStatus);
-  updateOnlineStatus();
-
-  // ── PWA install prompt ─────────────────────────────────────────────────────
-  window.addEventListener('beforeinstallprompt', e => {
-    e.preventDefault();
-    deferredInstallPrompt = e;
-    installBanner.classList.add('visible');
-  });
-
-  document.getElementById('btn-install').addEventListener('click', async () => {
-    if (!deferredInstallPrompt) return;
-    deferredInstallPrompt.prompt();
-    const { outcome } = await deferredInstallPrompt.userChoice;
-    deferredInstallPrompt = null;
-    installBanner.classList.remove('visible');
-  });
-
-  document.getElementById('btn-dismiss-install').addEventListener('click', () => {
-    installBanner.classList.remove('visible');
-  });
-
-  // ── Service worker ─────────────────────────────────────────────────────────
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('sw.js').catch(console.warn);
-  }
-
-  // ── Boot ───────────────────────────────────────────────────────────────────
-  startCamera();
+// ── Boot ──────────────────────────────────────────────────────────────────────
+startCamera();
 </script>
 </body>
 </html>
