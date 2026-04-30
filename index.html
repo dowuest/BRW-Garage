@@ -767,22 +767,12 @@ function escAttr(s) { return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot
 
 // ── Collect edits ─────────────────────────────────────────────────────────────
 function collectEdits() {
-  const nested = {};
-  $('fields-wrap').querySelectorAll('[data-key]').forEach(el => {
-    const key = el.dataset.key;
-    const val = el.type === 'checkbox' ? el.checked : el.value;
-    const parts = key.split('.');
-    if (parts.length === 1) {
-      nested[key] = val;
-    } else {
-      setNestedPath(nested, parts, val);
-    }
-  });
-
-  // Stringify any nested objects/arrays so Airtable gets strings
   const out = {};
-  Object.entries(nested).forEach(([k, v]) => {
-    out[k] = (typeof v === 'object' && v !== null) ? JSON.stringify(v) : v;
+  $('fields-wrap').querySelectorAll('[data-key]').forEach(el => {
+    // Convert dot notation to underscore: "fahrzeug.kennschild" → "fahrzeug_kennschild"
+    const key = el.dataset.key.replace(/\./g, '_');
+    const val = el.type === 'checkbox' ? el.checked : el.value;
+    out[key] = val;
   });
 
   // Collect edited zeitverrechnung rows
@@ -792,7 +782,11 @@ function collectEdits() {
     const rows = [];
     zvLeistung.forEach((el, i) => {
       const s = zvStunden[i]?.value;
-      rows.push({ leistung: el.value, stunden: s === '' ? null : parseFloat(s) || null, quelle: (lastResult.zeitverrechnung?.[i]?.quelle) || '' });
+      rows.push({
+        leistung: el.value,
+        stunden: s === '' ? null : parseFloat(s) || null,
+        quelle: (lastResult.zeitverrechnung?.[i]?.quelle) || ''
+      });
     });
     out.zeitverrechnung = JSON.stringify(rows);
   }
