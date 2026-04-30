@@ -29,6 +29,57 @@ export default {
     if (url.pathname === '/airtable') {
       const { table, fields } = body;
 
+      // Hard-map Einlagerungsschein fields regardless of what Claude returns
+      function flattenAndMap(fields, table) {
+        if (table !== 'Einlagerungsscheine') return fields;
+
+        const f = fields;
+        const out = {};
+
+        // Direct fields
+        const direct = ['einlagerungs_nr','annehmer','radart','pneuart','alter_lagerort','bemerkungen','confidence','auftrag_nr'];
+        direct.forEach(k => { if (f[k] !== undefined) out[k] = f[k]; });
+
+        // Date fields (various Claude naming)
+        out.datum_eroffnet = f.datum_eroffnet || f.datum || f.eroeffnet_am || '';
+        out.annahme_datum  = f.annahme_datum  || f.annahme || '';
+        out.termin_datum   = f.termin_datum   || f.termin  || '';
+        out.auftrag_nr     = f.auftrag_nr     || f.auftrag || '';
+
+        // Kunde (nested or flat)
+        const k = f.kunde || {};
+        out.kunde_name    = f.kunde_name    || k.name    || '';
+        out.kunde_adresse = f.kunde_adresse || k.strasse || k.adresse || '';
+        out.kunde_ort     = f.kunde_ort     || k.plz_ort || k.ort     || '';
+        out.kunde_mobil   = f.kunde_mobil   || k.mobil   || '';
+
+        // Fahrzeug (nested or flat)
+        const fz = f.fahrzeug || {};
+        out.fahrzeug_bezeichnung   = f.fahrzeug_bezeichnung   || fz.marke_modell  || fz.bezeichnung || '';
+        out.kennschild             = f.kennschild             || fz.kennzeichen   || fz.kennschild  || '';
+        out.chassisnr              = f.chassisnr              || fz.chassisnr     || '';
+        out.erst_inverkehrssetzung = f.erst_inverkehrssetzung || fz['1_inverk_s'] || fz.erste_inverkehrsetzung || '';
+
+        // Reifen (nested or flat)
+        const pn = f.pneumarke_dimension || {};
+        const vorne = f.reifendimension || pn.vorne || '';
+        // Split "Yokohama 205/50R17 93V" into marke + dimension
+        const reifenParts = vorne.match(/^([A-Za-z]+)\s+(.+)$/);
+        out.reifenmarke     = f.reifenmarke     || (reifenParts ? reifenParts[1] : vorne);
+        out.reifendimension = f.reifendimension || (reifenParts ? reifenParts[2] : '');
+
+        // Profiltiefe (nested or flat, uppercase or lowercase)
+        const pt = f.profiltiefe_mm || {};
+        out.profiltiefe_VL = parseFloat(f.profiltiefe_VL || pt.VL || pt.vl || 0) || 0;
+        out.profiltiefe_VR = parseFloat(f.profiltiefe_VR || pt.VR || pt.vr || 0) || 0;
+        out.profiltiefe_HL = parseFloat(f.profiltiefe_HL || pt.HL || pt.hl || 0) || 0;
+        out.profiltiefe_HR = parseFloat(f.profiltiefe_HR || pt.HR || pt.hr || 0) || 0;
+
+        return out;
+      }
+
+      const mappedFields = flattenAndMap(fields, table);
+
       const ALLOWED_FIELDS = {
         Einlagerungsscheine: new Set([
           'einlagerungs_nr','datum_eroffnet','annehmer','auftrag_nr','annahme_datum',
@@ -58,8 +109,8 @@ export default {
 
       const allowed = ALLOWED_FIELDS[table];
       const cleanFields = allowed
-        ? Object.fromEntries(Object.entries(fields).filter(([k]) => allowed.has(k)))
-        : fields;
+        ? Object.fromEntries(Object.entries(mappedFields).filter(([k]) => allowed.has(k)))
+        : mappedFields;
 
       const airtableRes = await fetch(
         `https://api.airtable.com/v0/appo9ljZERNttZXEA/${encodeURIComponent(table)}`,
