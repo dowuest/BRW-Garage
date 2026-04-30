@@ -794,12 +794,22 @@ async function saveToAirtable() {
     fields.zeit_verrechnung_h = parseFloat(edits.zeit_verrechnung_h) || 0;
   }
 
+  const cleanFields = Object.fromEntries(
+    Object.entries(fields).filter(([, v]) => v !== null && v !== undefined && v !== '')
+  );
+  const preparedFields = Object.fromEntries(
+    Object.entries(cleanFields).map(([k, v]) => [
+      k,
+      (Array.isArray(v) || (typeof v === 'object' && v !== null)) ? JSON.stringify(v) : v
+    ])
+  );
+
   try {
     const workerBase = (CONFIG.WORKER_URL || '').replace(/\/?$/, '');
     const res = await fetch(`${workerBase}/airtable`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ table: tableName, fields })
+      body: JSON.stringify({ table: tableName, fields: preparedFields })
     });
     if (!res.ok) { const t = await res.text(); throw new Error(`Airtable ${res.status}: ${t}`); }
     const data = await res.json();
