@@ -49,6 +49,10 @@ export default {
           'auftrag_nr','annahme_datum','mechaniker','fahrzeug','kennschild','km_neu',
           'arbeiten','reifenetikett','notizen','verbrauchsmaterial','zeitverrechnung',
           'zeit_verrechnung_h','confidence'
+        ]),
+        Lieferscheine: new Set([
+          'lieferschein_nr','datum','lieferant','kundennummer','lieferart',
+          'tourencode','positionen','notizen','anzahl_positionen','auftrag_nr','confidence'
         ])
       };
 

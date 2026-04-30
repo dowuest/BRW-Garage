@@ -311,6 +311,7 @@ Bestimme zuerst den Dokumenttyp:
 - einlagerungsschein: Grauer Balken mit Einlagerungs-Nr., Felder für Profiltiefe VL/VR/HL/HR, Checkboxen für Radart und Pneuart
 - werkstatt_auftrag: 'Werkstatt - Auftrag' als Titel oben, Fahrzeug-Datentabelle, Feld Km neu handschriftlich, Barcode oben rechts
 - servicelaufblatt: Zwei Checklisten-Tabellen mit Codes wie PR1/WS1/PW1, keine Kundendaten sichtbar
+- lieferschein: "Lieferschein" als Titel, Lieferant oben links (z.B. "hostettler autotechnik ag"), Tabelle mit Artikel-Nr/Beschreibung/Bestellt/Geliefert/Preis
 
 Extrahiere dann ALLE sichtbaren Felder des erkannten Dokumenttyps.
 
@@ -352,10 +353,22 @@ Für servicelaufblatt: Gib NUR folgende flache Arrays zurück:
 - "zeitverrechnung": Matching gegen Rechnungsschlüssel wie gehabt
 - KEINE verschachtelten Objekte — ausschliesslich flache Arrays
 
-Antworte NUR mit rohem validem JSON ohne Markdown-Backticks:
-{"dokumenttyp": "einlagerungsschein|werkstatt_auftrag|servicelaufblatt", "felder": {...}, "confidence": 0.0, "unsichere_felder": [], "zeitverrechnung": [{"leistung": "...", "stunden": 0.0, "quelle": "..."}], "zeit_total": 0.0, "zeit_hinweis": "..."}
+Für lieferschein extrahiere:
+- lieferschein_nr: Lieferscheinnummer (z.B. "L-211763395")
+- datum: Datum des Lieferscheins
+- lieferant: Name des Lieferanten (z.B. "hostettler autotechnik ag")
+- kundennummer: Kundennummer
+- lieferart: Lieferart (z.B. "Schnell Service")
+- tourencode: Tourencode
+- positionen: Array von Objekten [{"artikel_nr": "...", "beschreibung": "...", "bestellt": 0, "geliefert": 0, "me": "Stk.", "preis_inkl": 0.0, "basispreis": 0.0, "retour": false, "notiz": ""}]
+- notizen: Handschriftliche/gedruckte Hinweise oben (z.B. "Batterien nicht stempeln!!")
+- anzahl_positionen: Gesamtanzahl Positionen (aus "X Positionen" am Ende)
+- confidence: 0.0–1.0
 
-Für einlagerungsschein: zeitverrechnung=[], zeit_total=0, zeit_hinweis=""`;
+Antworte NUR mit rohem validem JSON ohne Markdown-Backticks:
+{"dokumenttyp": "einlagerungsschein|werkstatt_auftrag|servicelaufblatt|lieferschein", "felder": {...}, "confidence": 0.0, "unsichere_felder": [], "zeitverrechnung": [{"leistung": "...", "stunden": 0.0, "quelle": "..."}], "zeit_total": 0.0, "zeit_hinweis": "..."}
+
+Für einlagerungsschein und lieferschein: zeitverrechnung=[], zeit_total=0, zeit_hinweis=""`;
 
 const FIELD_LABELS = {
   einlagerungs_nr:'Einlagerungs-Nr.', datum_eroffnet:'Datum eröffnet', annehmer:'Annehmer',
@@ -369,23 +382,28 @@ const FIELD_LABELS = {
   alter_lagerort:'Alter Lagerort', bemerkungen:'Bemerkungen', fahrzeug:'Fahrzeug',
   km_alt:'Km alt', km_neu:'Km neu', mechaniker:'Mechaniker', annahme_uhrzeit:'Annahmezeit',
   arbeiten:'Arbeiten', notizen:'Notizen', hervorgehoben:'Hervorgehoben',
-  reifenetikett:'Reifenetikett', verbrauchsmaterial:'Verbrauchsmaterial'
+  reifenetikett:'Reifenetikett', verbrauchsmaterial:'Verbrauchsmaterial',
+  lieferschein_nr:'Lieferschein-Nr.', datum:'Datum', lieferant:'Lieferant',
+  kundennummer:'Kundennummer', lieferart:'Lieferart', tourencode:'Tourencode',
+  positionen:'Positionen', anzahl_positionen:'Anzahl Positionen'
 };
 
 const DOCTYPE_LABELS = {
   einlagerungsschein:'Einlagerungsschein',
   werkstatt_auftrag:'Werkstatt-Auftrag',
-  servicelaufblatt:'Servicelaufblatt'
+  servicelaufblatt:'Servicelaufblatt',
+  lieferschein:'Lieferschein'
 };
 
 const TABLE_MAP = {
   einlagerungsschein:'Einlagerungsscheine',
   werkstatt_auftrag:'Werkstatt_Auftraege',
-  servicelaufblatt:'Servicelaufblaetter'
+  servicelaufblatt:'Servicelaufblaetter',
+  lieferschein:'Lieferscheine'
 };
 
-const NUMBER_FIELDS = new Set(['profiltiefe_VL','profiltiefe_VR','profiltiefe_HL','profiltiefe_HR','confidence','zeit_total','zeit_verrechnung_h']);
-const ARRAY_FIELDS  = new Set(['arbeiten','notizen','hervorgehoben','reifenetikett','verbrauchsmaterial','zeitverrechnung']);
+const NUMBER_FIELDS = new Set(['profiltiefe_VL','profiltiefe_VR','profiltiefe_HL','profiltiefe_HR','confidence','zeit_total','zeit_verrechnung_h','anzahl_positionen']);
+const ARRAY_FIELDS  = new Set(['arbeiten','notizen','hervorgehoben','reifenetikett','verbrauchsmaterial','zeitverrechnung','positionen']);
 
 // ── State ─────────────────────────────────────────────────────────────────────
 let stream = null;
