@@ -588,6 +588,76 @@ async function analyzeWithClaude() {
   buildReview(parsed);
 }
 
+// ── Field render helpers ───────────────────────────────────────────────────────
+function renderField(keyPath, label, val, isUncertain) {
+  if (val === null || val === undefined) val = '';
+
+  if (typeof val === 'boolean') {
+    const row = document.createElement('div');
+    row.className = 'field-row';
+    row.innerHTML = `<label style="display:flex;align-items:center;gap:8px">
+      <input type="checkbox" data-key="${escAttr(keyPath)}"${val ? ' checked' : ''}>
+      <span class="field-label" style="margin:0">${escHtml(label)}${isUncertain ? ' ⚠' : ''}</span>
+    </label>`;
+    return [row];
+  }
+
+  if (Array.isArray(val)) {
+    const rows = [];
+    if (val.length === 0) return rows;
+    val.forEach((item, i) => {
+      if (item !== null && typeof item === 'object') {
+        Object.entries(item).forEach(([subKey, subVal]) => {
+          rows.push(...renderField(`${keyPath}.${i}.${subKey}`, `${escHtml(label)} [${i + 1}] – ${escHtml(FIELD_LABELS[subKey] || subKey)}`, subVal, false));
+        });
+      } else {
+        const strVal = item === null || item === undefined ? '' : String(item);
+        const row = document.createElement('div');
+        row.className = 'field-row';
+        row.innerHTML = `<div class="field-label">${escHtml(label)} [${i + 1}]</div>
+          <textarea class="field-input" data-key="${escAttr(`${keyPath}.${i}`)}" rows="2">${escHtml(strVal)}</textarea>`;
+        rows.push(row);
+      }
+    });
+    return rows;
+  }
+
+  if (typeof val === 'object') {
+    const rows = [];
+    Object.entries(val).forEach(([subKey, subVal]) => {
+      rows.push(...renderField(`${keyPath}.${subKey}`, `${escHtml(label)} – ${escHtml(FIELD_LABELS[subKey] || subKey)}`, subVal, false));
+    });
+    return rows;
+  }
+
+  const strVal = String(val);
+  const row = document.createElement('div');
+  row.className = 'field-row';
+  const unc = isUncertain ? ' uncertain' : '';
+  const warn = isUncertain ? ' ⚠' : '';
+  if (strVal.length > 60) {
+    row.innerHTML = `<div class="field-label">${escHtml(label)}${warn}</div>
+      <textarea class="field-input${unc}" data-key="${escAttr(keyPath)}" rows="2">${escHtml(strVal)}</textarea>`;
+  } else {
+    row.innerHTML = `<div class="field-label">${escHtml(label)}${warn}</div>
+      <input type="text" class="field-input${unc}" data-key="${escAttr(keyPath)}" value="${escAttr(strVal)}">`;
+  }
+  return [row];
+}
+
+function setNestedPath(obj, parts, val) {
+  let cur = obj;
+  for (let i = 0; i < parts.length - 1; i++) {
+    const key = parts[i];
+    const nextIsIndex = /^\d+$/.test(parts[i + 1]);
+    if (cur[key] === undefined || cur[key] === null) cur[key] = nextIsIndex ? [] : {};
+    cur = cur[key];
+  }
+  const last = parts[parts.length - 1];
+  const asIndex = /^\d+$/.test(last);
+  cur[asIndex ? parseInt(last, 10) : last] = val;
+}
+
 // ── Review screen ─────────────────────────────────────────────────────────────
 function buildReview(parsed) {
   const { dokumenttyp, felder = {}, confidence = 0, unsichere_felder = [] } = parsed;
@@ -604,45 +674,17 @@ function buildReview(parsed) {
   const wrap = $('fields-wrap');
   wrap.innerHTML = '';
 
-  const simpleEntries = Object.entries(felder).filter(([k]) => !ARRAY_FIELDS.has(k));
-  const complexEntries = Object.entries(felder).filter(([k]) => ARRAY_FIELDS.has(k));
-
-  // Simple fields
-  if (simpleEntries.length) {
-    const grp = makeGroup('Extrahierte Felder');
-    simpleEntries.forEach(([key, val]) => {
-      if (key === 'unsichere_felder') return;
-      const strVal = val === null || val === undefined ? '' : String(val);
-      const isUncertain = uncertain.has(key.toLowerCase());
-      const label = FIELD_LABELS[key] || key;
-      const long = strVal.length > 60;
-      const row = document.createElement('div');
-      row.className = 'field-row';
-      if (long) {
-        row.innerHTML = `<div class="field-label">${label}${isUncertain ? ' ⚠' : ''}</div>
-          <textarea class="field-input${isUncertain ? ' uncertain' : ''}" data-key="${key}" rows="2">${escHtml(strVal)}</textarea>`;
-      } else {
-        row.innerHTML = `<div class="field-label">${label}${isUncertain ? ' ⚠' : ''}</div>
-          <input type="text" class="field-input${isUncertain ? ' uncertain' : ''}" data-key="${key}" value="${escAttr(strVal)}">`;
-      }
-      grp.appendChild(row);
-    });
-    wrap.appendChild(grp);
-  }
-
-  // Array / complex fields (exclude zeitverrechnung — rendered separately)
-  complexEntries.forEach(([key, val]) => {
-    if (key === 'zeitverrechnung') return;
+  // All fields via renderField (handles primitives, booleans, arrays, objects)
+  const grp = makeGroup('Extrahierte Felder');
+  let hasFields = false;
+  Object.entries(felder).forEach(([key, val]) => {
+    if (key === 'unsichere_felder' || key === 'zeitverrechnung') return;
+    const isUncertain = uncertain.has(key.toLowerCase());
     const label = FIELD_LABELS[key] || key;
-    const display = typeof val === 'string' ? val : JSON.stringify(val, null, 2);
-    const lines = (display.match(/\n/g) || []).length + 3;
-    const grp = makeGroup(label);
-    const row = document.createElement('div');
-    row.className = 'field-row';
-    row.innerHTML = `<textarea class="field-input" data-key="${key}" rows="${Math.min(12, lines)}">${escHtml(display)}</textarea>`;
-    grp.appendChild(row);
-    wrap.appendChild(grp);
+    renderField(key, label, val, isUncertain).forEach(r => grp.appendChild(r));
+    hasFields = true;
   });
+  if (hasFields) wrap.appendChild(grp);
 
   // Zeitverrechnung section
   const zv = parsed.zeitverrechnung;
@@ -693,9 +735,22 @@ function escAttr(s) { return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot
 
 // ── Collect edits ─────────────────────────────────────────────────────────────
 function collectEdits() {
-  const out = {};
+  const nested = {};
   $('fields-wrap').querySelectorAll('[data-key]').forEach(el => {
-    out[el.dataset.key] = el.value;
+    const key = el.dataset.key;
+    const val = el.type === 'checkbox' ? el.checked : el.value;
+    const parts = key.split('.');
+    if (parts.length === 1) {
+      nested[key] = val;
+    } else {
+      setNestedPath(nested, parts, val);
+    }
+  });
+
+  // Stringify any nested objects/arrays so Airtable gets strings
+  const out = {};
+  Object.entries(nested).forEach(([k, v]) => {
+    out[k] = (typeof v === 'object' && v !== null) ? JSON.stringify(v) : v;
   });
 
   // Collect edited zeitverrechnung rows
