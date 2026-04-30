@@ -325,8 +325,39 @@ Extrahiere dann ALLE sichtbaren Felder des erkannten Dokumenttyps.
 
 Wichtig für Werkstatt-Aufträge: Extrahiere ALLE handschriftlichen Texte unterhalb der gedruckten Tabelle vollständig — diese enthalten die Verrechnungsinformationen. Auch gelb markierte Texte, aufgeklebte Etiketten und Preisnotizen müssen erfasst werden. Bei unlesbaren Zahlenwerten gib 99999 zurück.
 
+RECHNUNGSSCHLÜSSEL (immer anwenden für werkstatt_auftrag und servicelaufblatt):
+
+Servicezeiten Verrechnung:
+- Mazda 1.Service → 1.6h
+- Mazda 2.Service → 2.6h
+- Mazda 3.-4.Service → normal
+- Mazda ab 5.Service → normal
+- Andere Marken → normal
+
+Zeitplanung Diverses:
+- Prüfbereitstellen → 2.5h
+- Prüfen Bärau → 0.7h
+- Bremsen ersetzen vorne oder hinten → 1.0h
+- Radwechsel → 0.5h
+- Reifenwechsel → 1.0h
+
+Zeitverrechnung Serviceauftrag:
+- Service normal → 1.8h
+- Bremsen vorne → 0.2h
+- Bremsen hinten → 0.2h
+- Bremsflüssigkeit → 0.5h
+- Innenraumfilter → 0.3h
+- Luftfilter → 0.2h
+- Kraftstofffilter → nach Aufwand
+- Kerzen → nach Aufwand
+- Mazda DSR Servicenachweis + SARA → 0.1h
+
+Für werkstatt_auftrag und servicelaufblatt: Matche alle erkannten Arbeiten/Leistungen mit Fuzzy-Matching gegen den Rechnungsschlüssel (z.B. "Service 2" → "Mazda 2.Service"). Gib "stunden": null für "nach Aufwand"-Positionen. Summiere nur bekannte Stunden in "zeit_total".
+
 Antworte NUR mit rohem validem JSON ohne Markdown-Backticks:
-{"dokumenttyp": "einlagerungsschein|werkstatt_auftrag|servicelaufblatt", "felder": {...}, "confidence": 0.0, "unsichere_felder": []}`;
+{"dokumenttyp": "einlagerungsschein|werkstatt_auftrag|servicelaufblatt", "felder": {...}, "confidence": 0.0, "unsichere_felder": [], "zeitverrechnung": [{"leistung": "...", "stunden": 0.0, "quelle": "..."}], "zeit_total": 0.0, "zeit_hinweis": "..."}
+
+Für einlagerungsschein: zeitverrechnung=[], zeit_total=0, zeit_hinweis=""`;
 
 const FIELD_LABELS = {
   einlagerungs_nr:'Einlagerungs-Nr.', datum_eroffnet:'Datum eröffnet', annehmer:'Annehmer',
@@ -355,8 +386,8 @@ const TABLE_MAP = {
   servicelaufblatt:'Servicelaufblaetter'
 };
 
-const NUMBER_FIELDS = new Set(['profiltiefe_VL','profiltiefe_VR','profiltiefe_HL','profiltiefe_HR','confidence']);
-const ARRAY_FIELDS  = new Set(['arbeiten','notizen','hervorgehoben','reifenetikett','verbrauchsmaterial']);
+const NUMBER_FIELDS = new Set(['profiltiefe_VL','profiltiefe_VR','profiltiefe_HL','profiltiefe_HR','confidence','zeit_total','zeit_verrechnung_h']);
+const ARRAY_FIELDS  = new Set(['arbeiten','notizen','hervorgehoben','reifenetikett','verbrauchsmaterial','zeitverrechnung']);
 
 // ── State ─────────────────────────────────────────────────────────────────────
 let stream = null;
@@ -599,8 +630,9 @@ function buildReview(parsed) {
     wrap.appendChild(grp);
   }
 
-  // Array / complex fields
+  // Array / complex fields (exclude zeitverrechnung — rendered separately)
   complexEntries.forEach(([key, val]) => {
+    if (key === 'zeitverrechnung') return;
     const label = FIELD_LABELS[key] || key;
     const display = typeof val === 'string' ? val : JSON.stringify(val, null, 2);
     const lines = (display.match(/\n/g) || []).length + 3;
@@ -611,6 +643,40 @@ function buildReview(parsed) {
     grp.appendChild(row);
     wrap.appendChild(grp);
   });
+
+  // Zeitverrechnung section
+  const zv = parsed.zeitverrechnung;
+  if (Array.isArray(zv) && zv.length > 0) {
+    const grp = makeGroup('📋 Zeitverrechnung');
+    zv.forEach((item, i) => {
+      const row = document.createElement('div');
+      row.className = 'field-row';
+      row.style.cssText = 'display:grid;grid-template-columns:1fr 80px auto;gap:8px;align-items:center';
+      const stundenVal = item.stunden === null || item.stunden === undefined ? '' : String(item.stunden);
+      row.innerHTML = `
+        <input type="text" class="field-input" data-zv-key="leistung" data-zv-index="${i}" value="${escAttr(item.leistung || '')}" placeholder="Leistung">
+        <input type="number" class="field-input" data-zv-key="stunden" data-zv-index="${i}" value="${escAttr(stundenVal)}" placeholder="h" step="0.1" min="0" style="text-align:center">
+        <span style="font-size:0.7rem;color:var(--text-muted);white-space:nowrap">${escHtml(item.quelle || '')}</span>`;
+      grp.appendChild(row);
+    });
+
+    // Total row
+    const totalRow = document.createElement('div');
+    totalRow.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding-top:10px;border-top:1px solid rgba(255,255,255,0.1);margin-top:6px';
+    const total = parsed.zeit_total || 0;
+    const hinweis = parsed.zeit_hinweis || '';
+    totalRow.innerHTML = `
+      <div>
+        <span style="font-size:0.72rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em">Total</span>
+        ${hinweis ? `<div style="font-size:0.72rem;color:var(--warn);margin-top:3px">⚠ ${escHtml(hinweis)}</div>` : ''}
+      </div>
+      <div style="display:flex;align-items:center;gap:6px">
+        <input type="number" class="field-input" id="inp-zeit-total" value="${total}" step="0.1" min="0" style="width:72px;text-align:center;font-weight:700">
+        <span style="color:var(--text-muted);font-size:0.85rem">h</span>
+      </div>`;
+    grp.appendChild(totalRow);
+    wrap.appendChild(grp);
+  }
 
   show('s-review');
 }
@@ -631,6 +697,23 @@ function collectEdits() {
   $('fields-wrap').querySelectorAll('[data-key]').forEach(el => {
     out[el.dataset.key] = el.value;
   });
+
+  // Collect edited zeitverrechnung rows
+  const zvLeistung = $('fields-wrap').querySelectorAll('[data-zv-key="leistung"]');
+  const zvStunden  = $('fields-wrap').querySelectorAll('[data-zv-key="stunden"]');
+  if (zvLeistung.length) {
+    const rows = [];
+    zvLeistung.forEach((el, i) => {
+      const s = zvStunden[i]?.value;
+      rows.push({ leistung: el.value, stunden: s === '' ? null : parseFloat(s) || null, quelle: (lastResult.zeitverrechnung?.[i]?.quelle) || '' });
+    });
+    out.zeitverrechnung = JSON.stringify(rows);
+  }
+
+  // Collect edited total
+  const totalEl = $('inp-zeit-total');
+  if (totalEl) out.zeit_verrechnung_h = parseFloat(totalEl.value) || 0;
+
   return out;
 }
 
@@ -649,17 +732,22 @@ async function saveToAirtable() {
 
   const fields = {};
   Object.entries(merged).forEach(([k, v]) => {
-    if (k === 'unsichere_felder') return;
+    if (k === 'unsichere_felder' || k === 'zeit_total' || k === 'zeit_hinweis') return;
     if (ARRAY_FIELDS.has(k)) {
       fields[k] = typeof v === 'string' ? v : JSON.stringify(v);
     } else if (NUMBER_FIELDS.has(k)) {
       const n = parseFloat(String(v).replace(',', '.'));
-      fields[k] = isNaN(n) ? 99999 : n;
+      fields[k] = isNaN(n) ? 0 : n;
     } else {
       fields[k] = v === null || v === undefined ? '' : String(v);
     }
   });
   fields.confidence = typeof confidence === 'number' ? confidence : parseFloat(confidence) || 0;
+
+  // zeit_verrechnung_h only for werkstatt_auftrag and servicelaufblatt
+  if (dokumenttyp !== 'einlagerungsschein' && edits.zeit_verrechnung_h !== undefined) {
+    fields.zeit_verrechnung_h = parseFloat(edits.zeit_verrechnung_h) || 0;
+  }
 
   try {
     const res = await fetch(
