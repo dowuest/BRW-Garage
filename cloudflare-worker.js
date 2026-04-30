@@ -1,14 +1,8 @@
-// BRW Garage – Anthropic API Proxy
-// Deploy this as a Cloudflare Worker.
-// Set environment variables:
-//   ANTHROPIC_API_KEY = sk-ant-...
-//   AIRTABLE_TOKEN    = pat...
-
+// BRW Garage – API Proxy (Claude + Airtable)
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
 
-    // CORS preflight
     if (request.method === 'OPTIONS') {
       return new Response(null, {
         headers: {
@@ -31,15 +25,38 @@ export default {
       return new Response('Invalid JSON', { status: 400 });
     }
 
-    // Route: /airtable → Airtable proxy
+    // ── Airtable route ────────────────────────────────────────────────────────
     if (url.pathname === '/airtable') {
       const { table, fields } = body;
-      if (!table || !fields) {
-        return new Response(JSON.stringify({ error: 'table and fields required' }), {
-          status: 400,
-          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
-        });
-      }
+
+      const ALLOWED_FIELDS = {
+        Einlagerungsscheine: new Set([
+          'einlagerungs_nr','datum_eroffnet','annehmer','auftrag_nr','annahme_datum',
+          'termin_datum','kunde_name','kunde_adresse','kunde_ort','kunde_mobil',
+          'fahrzeug_bezeichnung','kennschild','chassisnr','erst_inverkehrssetzung',
+          'reifenmarke','reifendimension','profiltiefe_VL','profiltiefe_VR',
+          'profiltiefe_HL','profiltiefe_HR','radart','pneuart','alter_lagerort',
+          'bemerkungen','confidence'
+        ]),
+        Werkstatt_Auftraege: new Set([
+          'auftrag_nr','annahme_datum','annahme_uhrzeit','termin_datum','annehmer',
+          'mechaniker','kunde_name','kunde_adresse','kunde_ort','kunde_mobil',
+          'fahrzeug','kennschild','chassisnr','km_alt','km_neu','arbeiten',
+          'notizen','hervorgehoben','verbrauchsmaterial','zeitverrechnung',
+          'zeit_verrechnung_h','confidence'
+        ]),
+        Servicelaufblaetter: new Set([
+          'auftrag_nr','annahme_datum','mechaniker','fahrzeug','kennschild','km_neu',
+          'arbeiten','reifenetikett','notizen','verbrauchsmaterial','zeitverrechnung',
+          'zeit_verrechnung_h','confidence'
+        ])
+      };
+
+      const allowed = ALLOWED_FIELDS[table];
+      const cleanFields = allowed
+        ? Object.fromEntries(Object.entries(fields).filter(([k]) => allowed.has(k)))
+        : fields;
+
       const airtableRes = await fetch(
         `https://api.airtable.com/v0/appo9ljZERNttZXEA/${encodeURIComponent(table)}`,
         {
@@ -48,7 +65,7 @@ export default {
             'Authorization': `Bearer ${env.AIRTABLE_TOKEN}`,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ fields })
+          body: JSON.stringify({ fields: cleanFields })
         }
       );
       const data = await airtableRes.text();
@@ -61,7 +78,7 @@ export default {
       });
     }
 
-    // Route: / → Claude proxy (unchanged)
+    // ── Claude route ──────────────────────────────────────────────────────────
     const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
