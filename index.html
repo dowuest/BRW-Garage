@@ -374,12 +374,23 @@ zeitverrechnung (Array via Rechnungsschlüssel)
 Wichtig: ALLE handschriftlichen Texte unterhalb der gedruckten Tabelle vollständig in "notizen". Gelb markierte Texte in "hervorgehoben". Bei unlesbaren Zahlen: 99999.
 
 === SERVICELAUFBLATT ===
-Extrahiere diese exakten Feldnamen flach in "felder":
-arbeiten (Array aller ausgeführten Positionen als Strings, nur checked=true oder mit handschriftlichem Wert):
-  Format: ["PR2 Motor/Chassisreinigung", "WS1 Fahrzeug reinigen", "PW2 Radwechsel ab 17 Zoll"]
-verbrauchsmaterial (Array verwendeter Materialien mit Menge):
-  Format: ["2x Motoröl 5W30", "1x Bremsflüssigkeit DOT4"]
-notizen (Array handschriftlicher Zusatznotizen)
+Das Dokument hat ZWEI Teile: oben Materialliste mit Mengen, unten Checkboxen-Tabelle.
+
+Extrahiere NUR diese drei Felder — KEINE anderen:
+
+"arbeiten": Nur Checkboxen die angekreuzt (✓) sind — als einfache Strings.
+Ignoriere alle nicht angekreuzten Checkboxen komplett.
+Beispiel: ["PR1 Fahrzeug Prüfbereitstellen", "WS2 Niveaukontrolle", "PW2 Radwechsel ab 17 Zoll"]
+
+"verbrauchsmaterial": Nur Materialzeilen MIT handschriftlicher Menge links daneben.
+Ignoriere alle Materialien OHNE handschriftlichen Eintrag.
+Beispiel: ["4.7 Motoröl 5W30", "0.5 Scheibenwischwasser", "1 Ölzapfendichtung"]
+
+"notizen": Sonstige handschriftliche Vermerke.
+
+VERBOTEN: checkliste_links, checkliste_mitte, materialien_oben oder andere Felder.
+VERBOTEN: Verschachtelte Objekte.
+NUR die drei obigen flachen Arrays in "felder".
 
 === LIEFERSCHEIN ===
 Extrahiere diese exakten Feldnamen flach in "felder":
