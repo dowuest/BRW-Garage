@@ -313,12 +313,82 @@ Bestimme zuerst den Dokumenttyp:
 - servicelaufblatt: Zwei Checklisten-Tabellen mit Codes wie PR1/WS1/PW1, keine Kundendaten sichtbar
 - lieferschein: "Lieferschein" als Titel, Lieferant oben links (z.B. "hostettler autotechnik ag"), Tabelle mit Artikel-Nr/Beschreibung/Bestellt/Geliefert/Preis
 
-Extrahiere dann ALLE sichtbaren Felder des erkannten Dokumenttyps.
+WICHTIG: Antworte NUR mit rohem validem JSON. Keine verschachtelten Objekte — alle Felder FLACH direkt in "felder". Exakte Feldnamen wie unten angegeben verwenden.
 
-Wichtig für Werkstatt-Aufträge: Extrahiere ALLE handschriftlichen Texte unterhalb der gedruckten Tabelle vollständig — diese enthalten die Verrechnungsinformationen. Auch gelb markierte Texte, aufgeklebte Etiketten und Preisnotizen müssen erfasst werden. Bei unlesbaren Zahlenwerten gib 99999 zurück.
+=== EINLAGERUNGSSCHEIN ===
+Extrahiere diese exakten Feldnamen flach in "felder":
+einlagerungs_nr, datum_eroffnet, annehmer, auftrag_nr, annahme_datum, termin_datum,
+kunde_name, kunde_adresse, kunde_ort, kunde_mobil,
+fahrzeug_bezeichnung, kennschild, chassisnr, erst_inverkehrssetzung,
+reifenmarke, reifendimension,
+profiltiefe_VL (Zahl), profiltiefe_VR (Zahl), profiltiefe_HL (Zahl), profiltiefe_HR (Zahl),
+radart, pneuart, alter_lagerort, bemerkungen
 
-RECHNUNGSSCHLÜSSEL (immer anwenden für werkstatt_auftrag und servicelaufblatt):
+Beispiel:
+{
+  "dokumenttyp": "einlagerungsschein",
+  "felder": {
+    "einlagerungs_nr": "5312",
+    "datum_eroffnet": "31.03.2026",
+    "annehmer": "Stefan Bigler",
+    "auftrag_nr": "24277",
+    "annahme_datum": "07.04.2026",
+    "termin_datum": "07.04.2026 17:30",
+    "kunde_name": "Gurtner Michael",
+    "kunde_adresse": "Napfstrasse 56",
+    "kunde_ort": "3550 Langnau im Emmental",
+    "kunde_mobil": "0797079239",
+    "fahrzeug_bezeichnung": "VW Golf VII 2.0 TSI GTI",
+    "kennschild": "BE721640",
+    "chassisnr": "WVWZZZAUZEW187330",
+    "erst_inverkehrssetzung": "18.12.2013",
+    "reifenmarke": "Yokohama",
+    "reifendimension": "205/50R17 93V",
+    "profiltiefe_VL": 7,
+    "profiltiefe_VR": 7,
+    "profiltiefe_HL": 6,
+    "profiltiefe_HR": 6,
+    "radart": "Alu-Rad",
+    "pneuart": "Winter",
+    "alter_lagerort": "A25",
+    "bemerkungen": ""
+  },
+  "confidence": 0.95,
+  "unsichere_felder": [],
+  "zeitverrechnung": [],
+  "zeit_total": 0,
+  "zeit_hinweis": ""
+}
 
+=== WERKSTATT_AUFTRAG ===
+Extrahiere diese exakten Feldnamen flach in "felder":
+auftrag_nr, annahme_datum, annahme_uhrzeit, termin_datum, annehmer, mechaniker,
+kunde_name, kunde_adresse, kunde_ort, kunde_mobil,
+fahrzeug, kennschild, chassisnr, km_alt, km_neu,
+arbeiten (JSON-Array: [{"beschreibung":"...","stunden":0.0,"erledigt":true}]),
+notizen (JSON-Array: ["handschriftliche Notiz 1", "..."]),
+hervorgehoben (JSON-Array: ["gelb markierter Text"]),
+verbrauchsmaterial (JSON-Array: ["Artikel 1"]),
+zeitverrechnung (Array via Rechnungsschlüssel)
+
+Wichtig: ALLE handschriftlichen Texte unterhalb der gedruckten Tabelle vollständig in "notizen". Gelb markierte Texte in "hervorgehoben". Bei unlesbaren Zahlen: 99999.
+
+=== SERVICELAUFBLATT ===
+Extrahiere diese exakten Feldnamen flach in "felder":
+arbeiten (Array aller ausgeführten Positionen als Strings, nur checked=true oder mit handschriftlichem Wert):
+  Format: ["PR2 Motor/Chassisreinigung", "WS1 Fahrzeug reinigen", "PW2 Radwechsel ab 17 Zoll"]
+verbrauchsmaterial (Array verwendeter Materialien mit Menge):
+  Format: ["2x Motoröl 5W30", "1x Bremsflüssigkeit DOT4"]
+notizen (Array handschriftlicher Zusatznotizen)
+
+=== LIEFERSCHEIN ===
+Extrahiere diese exakten Feldnamen flach in "felder":
+lieferschein_nr, datum, lieferant, kundennummer, lieferart, tourencode,
+notizen (Freitext-Hinweise oben als String),
+anzahl_positionen (Zahl),
+positionen (JSON-Array: [{"artikel_nr":"...","beschreibung":"...","bestellt":0,"geliefert":0,"me":"Stk.","preis_inkl":0.0,"basispreis":0.0,"retour":false,"notiz":""}])
+
+=== RECHNUNGSSCHLÜSSEL (für werkstatt_auftrag und servicelaufblatt) ===
 Servicezeiten Verrechnung:
 - Mazda 1.Service → 1.6h
 - Mazda 2.Service → 2.6h
@@ -344,31 +414,10 @@ Zeitverrechnung Serviceauftrag:
 - Kerzen → nach Aufwand
 - Mazda DSR Servicenachweis + SARA → 0.1h
 
-Für werkstatt_auftrag und servicelaufblatt: Matche alle erkannten Arbeiten/Leistungen mit Fuzzy-Matching gegen den Rechnungsschlüssel (z.B. "Service 2" → "Mazda 2.Service"). Gib "stunden": null für "nach Aufwand"-Positionen. Summiere nur bekannte Stunden in "zeit_total".
+Matche alle erkannten Arbeiten mit Fuzzy-Matching gegen den Rechnungsschlüssel.
+"stunden": null für "nach Aufwand". Summiere nur bekannte Stunden in "zeit_total".
 
-Für servicelaufblatt: Gib NUR folgende flache Arrays zurück:
-- "arbeiten": Array aller ausgeführten Positionen als Strings. Nur Einträge mit checked=true oder handschriftlichem Wert. Format: ["PR2 Motor/Chassisreinigung", "WS1 Fahrzeug reinigen", "PW2 Radwechsel ab 17 Zoll"]
-- "verbrauchsmaterial": Array verwendeter Materialien mit Menge. Nur tatsächlich verwendete. Format: ["2x Motoröl 5W30", "1x Bremsflüssigkeit DOT4"]
-- "notizen": Array handschriftlicher Zusatznotizen als Strings
-- "zeitverrechnung": Matching gegen Rechnungsschlüssel wie gehabt
-- KEINE verschachtelten Objekte — ausschliesslich flache Arrays
-
-Für lieferschein extrahiere:
-- lieferschein_nr: Lieferscheinnummer (z.B. "L-211763395")
-- datum: Datum des Lieferscheins
-- lieferant: Name des Lieferanten (z.B. "hostettler autotechnik ag")
-- kundennummer: Kundennummer
-- lieferart: Lieferart (z.B. "Schnell Service")
-- tourencode: Tourencode
-- positionen: Array von Objekten [{"artikel_nr": "...", "beschreibung": "...", "bestellt": 0, "geliefert": 0, "me": "Stk.", "preis_inkl": 0.0, "basispreis": 0.0, "retour": false, "notiz": ""}]
-- notizen: Handschriftliche/gedruckte Hinweise oben (z.B. "Batterien nicht stempeln!!")
-- anzahl_positionen: Gesamtanzahl Positionen (aus "X Positionen" am Ende)
-- confidence: 0.0–1.0
-
-Antworte NUR mit rohem validem JSON ohne Markdown-Backticks:
-{"dokumenttyp": "einlagerungsschein|werkstatt_auftrag|servicelaufblatt|lieferschein", "felder": {...}, "confidence": 0.0, "unsichere_felder": [], "zeitverrechnung": [{"leistung": "...", "stunden": 0.0, "quelle": "..."}], "zeit_total": 0.0, "zeit_hinweis": "..."}
-
-Für einlagerungsschein und lieferschein: zeitverrechnung=[], zeit_total=0, zeit_hinweis=""`;
+Antworte NUR mit rohem validem JSON ohne Markdown-Backticks.`;
 
 const FIELD_LABELS = {
   einlagerungs_nr:'Einlagerungs-Nr.', datum_eroffnet:'Datum eröffnet', annehmer:'Annehmer',
