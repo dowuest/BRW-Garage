@@ -230,11 +230,20 @@
 
         <div class="settings-group">
           <div style="display:flex;align-items:center;justify-content:space-between">
-            <span class="settings-label">Claude API Key</span>
+            <span class="settings-label">Cloudflare Worker URL</span>
+            <span class="key-status" id="proxy-key-status">–</span>
+          </div>
+          <input class="settings-input" id="inp-proxy-url" type="url" placeholder="https://brw-proxy.YOUR-NAME.workers.dev" autocomplete="off" spellcheck="false" style="font-family:inherit;font-size:0.8rem">
+          <p class="settings-hint">Empfohlen – API-Key bleibt server-seitig. Siehe <code>cloudflare-worker.js</code> im Repository.</p>
+        </div>
+
+        <div class="settings-group" style="border:1px solid rgba(255,255,255,0.07)">
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <span class="settings-label">Claude API Key <span style="font-weight:400;text-transform:none;font-size:0.65rem;color:var(--text-muted)">(nur ohne Worker)</span></span>
             <span class="key-status" id="claude-key-status">–</span>
           </div>
           <input class="settings-input" id="inp-claude-key" type="password" placeholder="sk-ant-api03-..." autocomplete="off" spellcheck="false">
-          <p class="settings-hint">Anthropic Console → API Keys. Beginnt mit <code>sk-ant-</code></p>
+          <p class="settings-hint">Nur nötig wenn kein Worker URL gesetzt. Direkte Browser-Calls werden von manchen Browsern per CORS blockiert.</p>
         </div>
 
         <div class="settings-group">
@@ -266,32 +275,39 @@
 
 // ── Config: localStorage takes precedence over config.js ──────────────────────
 if (window._noConfig || typeof CONFIG === 'undefined') {
-  window.CONFIG = { CLAUDE_API_KEY: '', AIRTABLE_TOKEN: '', AIRTABLE_BASE_ID: 'appo9ljZERNttZXEA' };
+  window.CONFIG = { CLAUDE_API_KEY: '', CLAUDE_PROXY_URL: '', AIRTABLE_TOKEN: '', AIRTABLE_BASE_ID: 'appo9ljZERNttZXEA' };
 }
 function loadStoredKeys() {
+  const proxy    = localStorage.getItem('brw_proxy_url');
   const claude   = localStorage.getItem('brw_claude_key');
   const airtable = localStorage.getItem('brw_airtable_key');
-  if (claude)   CONFIG.CLAUDE_API_KEY  = claude;
-  if (airtable) CONFIG.AIRTABLE_TOKEN  = airtable;
+  if (proxy)    CONFIG.CLAUDE_PROXY_URL = proxy;
+  if (claude)   CONFIG.CLAUDE_API_KEY   = claude;
+  if (airtable) CONFIG.AIRTABLE_TOKEN   = airtable;
 }
 function saveKeys() {
+  const proxy    = $('inp-proxy-url').value.trim();
   const claude   = $('inp-claude-key').value.trim();
   const airtable = $('inp-airtable-key').value.trim();
-  if (claude)   { localStorage.setItem('brw_claude_key',   claude);   CONFIG.CLAUDE_API_KEY = claude; }
-  if (airtable) { localStorage.setItem('brw_airtable_key', airtable); CONFIG.AIRTABLE_TOKEN = airtable; }
+  if (proxy)    { localStorage.setItem('brw_proxy_url',    proxy);    CONFIG.CLAUDE_PROXY_URL = proxy; }
+  else          { localStorage.removeItem('brw_proxy_url');            CONFIG.CLAUDE_PROXY_URL = ''; }
+  if (claude)   { localStorage.setItem('brw_claude_key',   claude);   CONFIG.CLAUDE_API_KEY   = claude; }
+  if (airtable) { localStorage.setItem('brw_airtable_key', airtable); CONFIG.AIRTABLE_TOKEN   = airtable; }
   updateKeyStatus();
-  // Brief visual feedback, then go to camera
   $('btn-save-settings').textContent = '✓ Gespeichert!';
   setTimeout(() => { $('btn-save-settings').textContent = 'Speichern'; startCamera(); }, 900);
 }
 function updateKeyStatus() {
+  const hasP = !!CONFIG.CLAUDE_PROXY_URL;
   const hasC = !!CONFIG.CLAUDE_API_KEY;
   const hasA = !!CONFIG.AIRTABLE_TOKEN;
-  $('claude-key-status').textContent   = hasC ? '✓ gesetzt' : '✕ fehlt';
-  $('claude-key-status').className     = 'key-status ' + (hasC ? 'key-ok' : 'key-missing');
+  $('proxy-key-status').textContent   = hasP ? '✓ gesetzt' : '– optional';
+  $('proxy-key-status').className     = 'key-status ' + (hasP ? 'key-ok' : '');
+  $('claude-key-status').textContent  = hasC ? '✓ gesetzt' : (hasP ? '– nicht nötig' : '✕ fehlt');
+  $('claude-key-status').className    = 'key-status ' + (hasC ? 'key-ok' : (hasP ? '' : 'key-missing'));
   $('airtable-key-status').textContent = hasA ? '✓ gesetzt' : '✕ fehlt';
   $('airtable-key-status').className   = 'key-status ' + (hasA ? 'key-ok' : 'key-missing');
-  // Prefill inputs with masked placeholders if keys already stored
+  if (hasP && !$('inp-proxy-url').value)    $('inp-proxy-url').placeholder    = '(gespeichert)';
   if (hasC && !$('inp-claude-key').value)   $('inp-claude-key').placeholder   = '(gespeichert)';
   if (hasA && !$('inp-airtable-key').value) $('inp-airtable-key').placeholder = '(gespeichert)';
 }
@@ -480,8 +496,9 @@ async function handleFile(file) {
 
 // ── Claude API ────────────────────────────────────────────────────────────────
 async function analyzeWithClaude() {
-  if (!CONFIG.CLAUDE_API_KEY) {
-    showError('API-Key fehlt', 'Bitte zuerst den Claude API-Key in den Einstellungen (⚙) eingeben und speichern.');
+  const useProxy = !!CONFIG.CLAUDE_PROXY_URL;
+  if (!useProxy && !CONFIG.CLAUDE_API_KEY) {
+    showError('Konfiguration fehlt', 'Bitte in den Einstellungen (⚙) entweder die Worker URL oder den Claude API-Key eintragen.');
     return;
   }
 
@@ -489,42 +506,38 @@ async function analyzeWithClaude() {
   $('proc-title').textContent = 'Wird analysiert…';
   $('proc-sub').textContent = 'Claude Vision liest das Dokument aus';
 
+  const requestBody = {
+    model: 'claude-opus-4-5',
+    max_tokens: 2000,
+    messages: [{
+      role: 'user',
+      content: [
+        { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: compressedBase64 } },
+        { type: 'text', text: CLAUDE_PROMPT }
+      ]
+    }]
+  };
+
+  // Via Cloudflare Worker proxy (recommended — avoids CORS)
+  // or direct if no proxy configured
+  const endpoint = useProxy ? CONFIG.CLAUDE_PROXY_URL : 'https://api.anthropic.com/v1/messages';
+  const headers = useProxy
+    ? { 'content-type': 'application/json' }
+    : { 'content-type': 'application/json', 'x-api-key': CONFIG.CLAUDE_API_KEY, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-calls': 'true' };
+
   let rawText;
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      mode: 'cors',
-      headers: {
-        'x-api-key': CONFIG.CLAUDE_API_KEY,
-        'anthropic-version': '2023-06-01',
-        'content-type': 'application/json',
-        'anthropic-dangerous-direct-browser-calls': 'true'
-      },
-      body: JSON.stringify({
-        model: 'claude-opus-4-5',
-        max_tokens: 2000,
-        messages: [{
-          role: 'user',
-          content: [
-            { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: compressedBase64 } },
-            { type: 'text', text: CLAUDE_PROMPT }
-          ]
-        }]
-      })
-    });
+    const res = await fetch(endpoint, { method: 'POST', mode: 'cors', headers, body: JSON.stringify(requestBody) });
     if (!res.ok) { const t = await res.text(); throw new Error(`Claude API ${res.status}: ${t}`); }
     const data = await res.json();
     rawText = data.content?.[0]?.text || '';
   } catch (err) {
     retryFn = analyzeWithClaude;
     let msg = err.message;
-    if (err instanceof TypeError && err.message.toLowerCase().includes('fetch')) {
-      msg = 'Netzwerkfehler: Verbindung zu api.anthropic.com fehlgeschlagen.\n\n' +
-            'Mögliche Ursachen:\n' +
-            '• API-Key in den Einstellungen (⚙) prüfen\n' +
-            '• Internetverbindung prüfen\n' +
-            '• Browser-Erweiterungen (AdBlocker) deaktivieren\n' +
-            '• Firmennetzwerk blockiert evtl. externe APIs';
+    if (err instanceof TypeError) {
+      msg = useProxy
+        ? `Worker URL nicht erreichbar: ${CONFIG.CLAUDE_PROXY_URL}\n\nBitte Worker URL in den Einstellungen (⚙) prüfen.`
+        : 'Direkter API-Call durch Browser-CORS blockiert.\n\nLösung: Cloudflare Worker URL in den Einstellungen (⚙) eintragen.\nAnleitung: cloudflare-worker.js im Repository.';
     }
     showError('Claude API Fehler', msg);
     return;
@@ -704,7 +717,7 @@ updateOnline();
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(console.warn);
 
 // ── Boot ──────────────────────────────────────────────────────────────────────
-if (!CONFIG.CLAUDE_API_KEY || !CONFIG.AIRTABLE_TOKEN) {
+if ((!CONFIG.CLAUDE_PROXY_URL && !CONFIG.CLAUDE_API_KEY) || !CONFIG.AIRTABLE_TOKEN) {
   updateKeyStatus();
   show('s-settings');
 } else {
