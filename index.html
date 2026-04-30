@@ -345,6 +345,13 @@ Zeitverrechnung Serviceauftrag:
 
 Für werkstatt_auftrag und servicelaufblatt: Matche alle erkannten Arbeiten/Leistungen mit Fuzzy-Matching gegen den Rechnungsschlüssel (z.B. "Service 2" → "Mazda 2.Service"). Gib "stunden": null für "nach Aufwand"-Positionen. Summiere nur bekannte Stunden in "zeit_total".
 
+Für servicelaufblatt: Gib NUR folgende flache Arrays zurück:
+- "arbeiten": Array aller ausgeführten Positionen als Strings. Nur Einträge mit checked=true oder handschriftlichem Wert. Format: ["PR2 Motor/Chassisreinigung", "WS1 Fahrzeug reinigen", "PW2 Radwechsel ab 17 Zoll"]
+- "verbrauchsmaterial": Array verwendeter Materialien mit Menge. Nur tatsächlich verwendete. Format: ["2x Motoröl 5W30", "1x Bremsflüssigkeit DOT4"]
+- "notizen": Array handschriftlicher Zusatznotizen als Strings
+- "zeitverrechnung": Matching gegen Rechnungsschlüssel wie gehabt
+- KEINE verschachtelten Objekte — ausschliesslich flache Arrays
+
 Antworte NUR mit rohem validem JSON ohne Markdown-Backticks:
 {"dokumenttyp": "einlagerungsschein|werkstatt_auftrag|servicelaufblatt", "felder": {...}, "confidence": 0.0, "unsichere_felder": [], "zeitverrechnung": [{"leistung": "...", "stunden": 0.0, "quelle": "..."}], "zeit_total": 0.0, "zeit_hinweis": "..."}
 
@@ -790,23 +797,28 @@ async function saveToAirtable() {
   $('proc-sub').textContent = `Airtable: ${DOCTYPE_LABELS[dokumenttyp]}`;
 
   const edits = collectEdits();
-  const merged = { ...felder, ...edits };
 
-  // Flatten nested objects to match Airtable field names
-  // e.g. { kunde: { name: "X", adresse: "Y" } } → { kunde_name: "X", kunde_adresse: "Y" }
-  function flattenFields(obj, prefix = '') {
+  function flattenToUnderscore(obj, prefix = '') {
     const result = {};
     for (const [k, v] of Object.entries(obj)) {
       const key = prefix ? `${prefix}_${k}` : k;
-      if (v !== null && typeof v === 'object' && !Array.isArray(v) && !ARRAY_FIELDS.has(k)) {
-        Object.assign(result, flattenFields(v, key));
+      if (
+        v !== null &&
+        typeof v === 'object' &&
+        !Array.isArray(v) &&
+        !ARRAY_FIELDS.has(k) &&
+        !NUMBER_FIELDS.has(k)
+      ) {
+        Object.assign(result, flattenToUnderscore(v, key));
       } else {
         result[key] = v;
       }
     }
     return result;
   }
-  const flatMerged = flattenFields(merged);
+  const flatFelder = flattenToUnderscore(felder);
+  const merged = { ...flatFelder, ...edits };
+  const flatMerged = merged;
 
   const fields = {};
   Object.entries(flatMerged).forEach(([k, v]) => {
