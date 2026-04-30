@@ -775,8 +775,24 @@ async function saveToAirtable() {
   const edits = collectEdits();
   const merged = { ...felder, ...edits };
 
+  // Flatten nested objects to match Airtable field names
+  // e.g. { kunde: { name: "X", adresse: "Y" } } → { kunde_name: "X", kunde_adresse: "Y" }
+  function flattenFields(obj, prefix = '') {
+    const result = {};
+    for (const [k, v] of Object.entries(obj)) {
+      const key = prefix ? `${prefix}_${k}` : k;
+      if (v !== null && typeof v === 'object' && !Array.isArray(v) && !ARRAY_FIELDS.has(k)) {
+        Object.assign(result, flattenFields(v, key));
+      } else {
+        result[key] = v;
+      }
+    }
+    return result;
+  }
+  const flatMerged = flattenFields(merged);
+
   const fields = {};
-  Object.entries(merged).forEach(([k, v]) => {
+  Object.entries(flatMerged).forEach(([k, v]) => {
     if (k === 'unsichere_felder' || k === 'zeit_total' || k === 'zeit_hinweis') return;
     if (ARRAY_FIELDS.has(k)) {
       fields[k] = typeof v === 'string' ? v : JSON.stringify(v);
