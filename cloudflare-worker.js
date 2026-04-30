@@ -1,11 +1,13 @@
 // BRW Garage – Anthropic API Proxy
 // Deploy this as a Cloudflare Worker.
-// Set environment variable: ANTHROPIC_API_KEY = sk-ant-...
-//
-// The Worker handles CORS and keeps the API key server-side.
+// Set environment variables:
+//   ANTHROPIC_API_KEY = sk-ant-...
+//   AIRTABLE_TOKEN    = pat...
 
 export default {
   async fetch(request, env) {
+    const url = new URL(request.url);
+
     // CORS preflight
     if (request.method === 'OPTIONS') {
       return new Response(null, {
@@ -29,6 +31,31 @@ export default {
       return new Response('Invalid JSON', { status: 400 });
     }
 
+    // Route: /airtable
+    if (url.pathname === '/airtable') {
+      const { table, fields } = body;
+      const airtableRes = await fetch(
+        `https://api.airtable.com/v0/appo9ljZERNttZXEA/${encodeURIComponent(table)}`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${env.AIRTABLE_TOKEN}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ fields })
+        }
+      );
+      const data = await airtableRes.text();
+      return new Response(data, {
+        status: airtableRes.status,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*',
+        },
+      });
+    }
+
+    // Route: / (Claude proxy)
     const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -38,9 +65,7 @@ export default {
       },
       body: JSON.stringify(body),
     });
-
     const data = await anthropicRes.text();
-
     return new Response(data, {
       status: anthropicRes.status,
       headers: {

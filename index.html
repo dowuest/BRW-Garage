@@ -246,15 +246,6 @@
           <p class="settings-hint">Nur nötig wenn kein Worker URL gesetzt. Direkte Browser-Calls werden von manchen Browsern per CORS blockiert.</p>
         </div>
 
-        <div class="settings-group">
-          <div style="display:flex;align-items:center;justify-content:space-between">
-            <span class="settings-label">Airtable Token</span>
-            <span class="key-status" id="airtable-key-status">–</span>
-          </div>
-          <input class="settings-input" id="inp-airtable-key" type="password" placeholder="pat..." autocomplete="off" spellcheck="false">
-          <p class="settings-hint">Airtable → Account → Developer Hub → Personal Access Tokens. Beginnt mit <code>pat</code></p>
-        </div>
-
         <button class="btn btn-success" id="btn-save-settings">Speichern</button>
         <button class="btn btn-secondary" id="btn-settings-back">Zurück zur Kamera</button>
       </div>
@@ -275,24 +266,27 @@
 
 // ── Config: localStorage takes precedence over config.js ──────────────────────
 if (window._noConfig || typeof CONFIG === 'undefined') {
-  window.CONFIG = { CLAUDE_API_KEY: '', CLAUDE_PROXY_URL: '', AIRTABLE_TOKEN: '', AIRTABLE_BASE_ID: 'appo9ljZERNttZXEA' };
+  window.CONFIG = { CLAUDE_API_KEY: '', CLAUDE_PROXY_URL: '', WORKER_URL: '' };
 }
 function loadStoredKeys() {
-  const proxy    = localStorage.getItem('brw_proxy_url');
-  const claude   = localStorage.getItem('brw_claude_key');
-  const airtable = localStorage.getItem('brw_airtable_key');
-  if (proxy)    CONFIG.CLAUDE_PROXY_URL = proxy;
-  if (claude)   CONFIG.CLAUDE_API_KEY   = claude;
-  if (airtable) CONFIG.AIRTABLE_TOKEN   = airtable;
+  const proxy  = localStorage.getItem('brw_proxy_url');
+  const claude = localStorage.getItem('brw_claude_key');
+  if (proxy)  CONFIG.CLAUDE_PROXY_URL = proxy;
+  if (claude) CONFIG.CLAUDE_API_KEY   = claude;
+  // Derive WORKER_URL from proxy URL (same host, different path)
+  CONFIG.WORKER_URL = CONFIG.CLAUDE_PROXY_URL
+    ? CONFIG.CLAUDE_PROXY_URL.replace(/\/?$/, '')
+    : (CONFIG.WORKER_URL || '');
 }
 function saveKeys() {
-  const proxy    = $('inp-proxy-url').value.trim();
-  const claude   = $('inp-claude-key').value.trim();
-  const airtable = $('inp-airtable-key').value.trim();
-  if (proxy)    { localStorage.setItem('brw_proxy_url',    proxy);    CONFIG.CLAUDE_PROXY_URL = proxy; }
-  else          { localStorage.removeItem('brw_proxy_url');            CONFIG.CLAUDE_PROXY_URL = ''; }
-  if (claude)   { localStorage.setItem('brw_claude_key',   claude);   CONFIG.CLAUDE_API_KEY   = claude; }
-  if (airtable) { localStorage.setItem('brw_airtable_key', airtable); CONFIG.AIRTABLE_TOKEN   = airtable; }
+  const proxy  = $('inp-proxy-url').value.trim();
+  const claude = $('inp-claude-key').value.trim();
+  if (proxy)  { localStorage.setItem('brw_proxy_url',  proxy);  CONFIG.CLAUDE_PROXY_URL = proxy; }
+  else        { localStorage.removeItem('brw_proxy_url');        CONFIG.CLAUDE_PROXY_URL = ''; }
+  if (claude) { localStorage.setItem('brw_claude_key', claude);  CONFIG.CLAUDE_API_KEY   = claude; }
+  CONFIG.WORKER_URL = CONFIG.CLAUDE_PROXY_URL
+    ? CONFIG.CLAUDE_PROXY_URL.replace(/\/?$/, '')
+    : (CONFIG.WORKER_URL || '');
   updateKeyStatus();
   $('btn-save-settings').textContent = '✓ Gespeichert!';
   setTimeout(() => { $('btn-save-settings').textContent = 'Speichern'; startCamera(); }, 900);
@@ -300,16 +294,12 @@ function saveKeys() {
 function updateKeyStatus() {
   const hasP = !!CONFIG.CLAUDE_PROXY_URL;
   const hasC = !!CONFIG.CLAUDE_API_KEY;
-  const hasA = !!CONFIG.AIRTABLE_TOKEN;
-  $('proxy-key-status').textContent   = hasP ? '✓ gesetzt' : '– optional';
-  $('proxy-key-status').className     = 'key-status ' + (hasP ? 'key-ok' : '');
-  $('claude-key-status').textContent  = hasC ? '✓ gesetzt' : (hasP ? '– nicht nötig' : '✕ fehlt');
-  $('claude-key-status').className    = 'key-status ' + (hasC ? 'key-ok' : (hasP ? '' : 'key-missing'));
-  $('airtable-key-status').textContent = hasA ? '✓ gesetzt' : '✕ fehlt';
-  $('airtable-key-status').className   = 'key-status ' + (hasA ? 'key-ok' : 'key-missing');
-  if (hasP && !$('inp-proxy-url').value)    $('inp-proxy-url').placeholder    = '(gespeichert)';
-  if (hasC && !$('inp-claude-key').value)   $('inp-claude-key').placeholder   = '(gespeichert)';
-  if (hasA && !$('inp-airtable-key').value) $('inp-airtable-key').placeholder = '(gespeichert)';
+  $('proxy-key-status').textContent  = hasP ? '✓ gesetzt' : '– optional';
+  $('proxy-key-status').className    = 'key-status ' + (hasP ? 'key-ok' : '');
+  $('claude-key-status').textContent = hasC ? '✓ gesetzt' : (hasP ? '– nicht nötig' : '✕ fehlt');
+  $('claude-key-status').className   = 'key-status ' + (hasC ? 'key-ok' : (hasP ? '' : 'key-missing'));
+  if (hasP && !$('inp-proxy-url').value)  $('inp-proxy-url').placeholder  = '(gespeichert)';
+  if (hasC && !$('inp-claude-key').value) $('inp-claude-key').placeholder = '(gespeichert)';
 }
 loadStoredKeys();
 
@@ -805,17 +795,15 @@ async function saveToAirtable() {
   }
 
   try {
-    const res = await fetch(
-      `https://api.airtable.com/v0/${CONFIG.AIRTABLE_BASE_ID}/${encodeURIComponent(tableName)}`,
-      {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${CONFIG.AIRTABLE_TOKEN}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ records: [{ fields }] })
-      }
-    );
+    const workerBase = (CONFIG.WORKER_URL || '').replace(/\/?$/, '');
+    const res = await fetch(`${workerBase}/airtable`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ table: tableName, fields })
+    });
     if (!res.ok) { const t = await res.text(); throw new Error(`Airtable ${res.status}: ${t}`); }
     const data = await res.json();
-    const recId = data.records?.[0]?.id || '–';
+    const recId = data.id || '–';
     $('success-detail').textContent = `${DOCTYPE_LABELS[dokumenttyp]} in „${tableName}" gespeichert.\nDatensatz-ID: ${recId}`;
     show('s-success');
   } catch (err) {
@@ -860,7 +848,7 @@ updateOnline();
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(console.warn);
 
 // ── Boot ──────────────────────────────────────────────────────────────────────
-if ((!CONFIG.CLAUDE_PROXY_URL && !CONFIG.CLAUDE_API_KEY) || !CONFIG.AIRTABLE_TOKEN) {
+if (!CONFIG.CLAUDE_PROXY_URL && !CONFIG.CLAUDE_API_KEY) {
   updateKeyStatus();
   show('s-settings');
 } else {

@@ -1,5 +1,3 @@
 const CONFIG = {
-  CLAUDE_API_KEY: 'YOUR_CLAUDE_API_KEY',
-  AIRTABLE_TOKEN: 'YOUR_AIRTABLE_TOKEN',
-  AIRTABLE_BASE_ID: 'appo9ljZERNttZXEA'
+  WORKER_URL: 'https://brw-garage-proxy.dowuest.workers.dev'
 };
