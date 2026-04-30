@@ -201,6 +201,7 @@
       <p class="result-title">Gespeichert!</p>
       <p class="result-sub" id="success-detail"></p>
       <button class="btn btn-primary" id="btn-next" style="max-width:280px;margin-top:8px">Nächstes Dokument</button>
+      <button class="btn btn-secondary" id="btn-new-auftrag" style="max-width:280px">＋ Neuer Auftrag</button>
     </div>
 
     <!-- Error -->
@@ -386,6 +387,7 @@ let lastResult = null;
 let retryFn = null;
 let pdfDoc = null;
 let pdfPage = 1;
+let sessionAuftragNr = null; // persists across scans within one Auftrag
 
 // ── DOM helpers ───────────────────────────────────────────────────────────────
 const $ = id => document.getElementById(id);
@@ -660,9 +662,24 @@ function buildReview(parsed) {
   cb.textContent = `${pct}% Konfidenz`;
   cb.className = 'conf-badge ' + (confidence > 0.85 ? 'conf-green' : confidence > 0.70 ? 'conf-orange' : 'conf-red');
 
+  // Session banner
+  const sessionBanner = document.createElement('div');
+  sessionBanner.style.cssText = 'width:100%;max-width:600px;display:flex;align-items:center;justify-content:space-between;background:rgba(74,111,165,0.15);border:1px solid var(--accent);border-radius:10px;padding:10px 14px;font-size:0.82rem;';
+  if (sessionAuftragNr) {
+    sessionBanner.innerHTML = `
+      <span>🔗 Auftrag: <strong>${escHtml(sessionAuftragNr)}</strong></span>
+      <button onclick="sessionAuftragNr=null;this.parentElement.remove()" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:0.75rem;">✕ Neuer Auftrag</button>`;
+  } else if (dokumenttyp === 'werkstatt_auftrag' && parsed.felder?.auftrag_nr) {
+    sessionAuftragNr = parsed.felder.auftrag_nr;
+    sessionBanner.innerHTML = `<span>🔗 Neuer Auftrag gestartet: <strong>${escHtml(sessionAuftragNr)}</strong></span>`;
+  } else if (dokumenttyp !== 'werkstatt_auftrag') {
+    sessionBanner.innerHTML = `<span style="color:var(--warn)">⚠ Kein aktiver Auftrag — zuerst Werkstatt-Auftrag scannen</span>`;
+  }
+
   // Build field groups
   const wrap = $('fields-wrap');
   wrap.innerHTML = '';
+  wrap.parentElement.insertBefore(sessionBanner, wrap);
 
   // All fields via renderField (handles primitives, booleans, arrays, objects)
   const grp = makeGroup('Extrahierte Felder');
@@ -805,6 +822,15 @@ async function saveToAirtable() {
   });
   fields.confidence = typeof confidence === 'number' ? confidence : parseFloat(confidence) || 0;
 
+  // Link to active Auftrag session
+  if (sessionAuftragNr && !fields.auftrag_nr) {
+    fields.auftrag_nr = sessionAuftragNr;
+  }
+  // If this IS the werkstatt_auftrag, update session with its auftrag_nr
+  if (dokumenttyp === 'werkstatt_auftrag' && fields.auftrag_nr) {
+    sessionAuftragNr = fields.auftrag_nr;
+  }
+
   // zeit_verrechnung_h only for werkstatt_auftrag and servicelaufblatt
   if (dokumenttyp !== 'einlagerungsschein' && edits.zeit_verrechnung_h !== undefined) {
     fields.zeit_verrechnung_h = parseFloat(edits.zeit_verrechnung_h) || 0;
@@ -852,6 +878,7 @@ $('btn-analyze').addEventListener('click', analyzeWithClaude);
 $('btn-confirm').addEventListener('click', saveToAirtable);
 $('btn-review-retake').addEventListener('click', startCamera);
 $('btn-next').addEventListener('click', startCamera);
+$('btn-new-auftrag').addEventListener('click', () => { sessionAuftragNr = null; startCamera(); });
 $('btn-err-retry').addEventListener('click', () => retryFn && retryFn());
 $('btn-err-cam').addEventListener('click', startCamera);
 $('btn-cam-retry').addEventListener('click', startCamera);
