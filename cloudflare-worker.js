@@ -31,9 +31,15 @@ export default {
       return new Response('Invalid JSON', { status: 400 });
     }
 
-    // Route: /airtable
+    // Route: /airtable → Airtable proxy
     if (url.pathname === '/airtable') {
       const { table, fields } = body;
+      if (!table || !fields) {
+        return new Response(JSON.stringify({ error: 'table and fields required' }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+        });
+      }
       const airtableRes = await fetch(
         `https://api.airtable.com/v0/appo9ljZERNttZXEA/${encodeURIComponent(table)}`,
         {
@@ -55,7 +61,7 @@ export default {
       });
     }
 
-    // Route: / (Claude proxy)
+    // Route: / → Claude proxy (unchanged)
     const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
