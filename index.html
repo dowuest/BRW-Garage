@@ -374,23 +374,82 @@ zeitverrechnung (Array via Rechnungsschlüssel)
 Wichtig: ALLE handschriftlichen Texte unterhalb der gedruckten Tabelle vollständig in "notizen". Gelb markierte Texte in "hervorgehoben". Bei unlesbaren Zahlen: 99999.
 
 === SERVICELAUFBLATT ===
-Das Dokument hat ZWEI Teile: oben Materialliste mit Mengen, unten Checkboxen-Tabelle.
 
-Extrahiere NUR diese drei Felder — KEINE anderen:
+Das Dokument hat ZWEI Teile:
+- OBEN: Materialliste (gedruckte Codes links, handschriftliche Menge daneben)
+- UNTEN: Checkliste mit Codes wie PR1, WS2, PW1 — angekreuzt oder leer
 
-"arbeiten": Nur Checkboxen die angekreuzt (✓) sind — als einfache Strings.
-Ignoriere alle nicht angekreuzten Checkboxen komplett.
-Beispiel: ["PR1 Fahrzeug Prüfbereitstellen", "WS2 Niveaukontrolle", "PW2 Radwechsel ab 17 Zoll"]
+WICHTIG: Antworte NUR mit rohem validem JSON. Alle Felder FLACH in "felder".
 
-"verbrauchsmaterial": Nur Materialzeilen MIT handschriftlicher Menge links daneben.
-Ignoriere alle Materialien OHNE handschriftlichen Eintrag.
-Beispiel: ["4.7 Motoröl 5W30", "0.5 Scheibenwischwasser", "1 Ölzapfendichtung"]
+Extrahiere JEDEN Code als eigenes Feld:
 
-"notizen": Sonstige handschriftliche Vermerke.
+NUMBER-Felder (handschriftliche Menge eintragen, 0 wenn nicht vorhanden):
+MAT_2 (Motoröl 5W30 Liter), MAT_3 (Motoröl 5W30 DPF), MAT_4 (Motoröl 0W20),
+MAT_5 (Automatenöl ATF), MAT_9 (Getriebeöl GL4/5), MAT_12 (Bremsflüssigkeit DOT4),
+MAT_13 (Scheibenwischwasser), MAT_16 (Motorreiniger), MAT_17 (Klimadesinfektion),
+MAT_18 (Frostschutz blau), MAT_19 (Frostschutz grün), MAT_20 (Frostschutz rot),
+MAT_21 (Frostschutz FL22 grün), MAT_22 (Frostschutz FL22 rot),
+MAT_24 (Kraftstoffzusatz), MAT_25 (Haldexöl/4x4 VAG),
+MAT_134 (Freon R-134 pro 100gr), MAT_1234 (Freon R-1234yf pro 1gr),
+MAT_AD (AdBlue Liter),
+UNT (Unterbodenschutz), SK (Scheibenkleber), SA (Scheibenaktivator),
+M4, M5, M6, M8, M10, M12 (Schrauben/Muttern Anzahl),
+NIET (Niete), SCHR (Blechschraube), IMB (Imussschraube), KB (Kabelband),
+KUN (Kunststoffverbinder), BRI (Schlauchbride),
+SI (Sicherung Normal), SIM (Sicherung Mini), LOT (Lötverbinder), ELA (Elektroverbinder),
+GL1 (H1), GL2 (H3), GL3 (H4), GL4 (H7), GL5 (H11),
+GL6 (Glassockel 12V5W), GL7 (12V3W), GL8 (12V1.2W), GL9 (12V5W orange),
+GL10 (12V21W), GL11 (12V21/5W), GL12 (12V21W oran.), GL13 (12/16W),
+GL14 (Glühbirne 12V5W), GL15 (12V10W), GL16 (12V21W), GL17 (12V21W oran.),
+GL18 (12V21/5W), GL19 (HB3), GL20 (HB4), GL21 (H8), GL22 (H9), GL23 (H15), GL24 (HIR2),
+PR2 (Motor/Chassisreinigung h), PR6 (Unterbodenschutz malen h), PR7 (Fahrzeug prüfen h),
+WS1 (Fz reinigen Anzahl), WS5 (Fehlerspeicher Anzahl),
+PW1 (Radwechsel -16 Anzahl), PW2 (Radwechsel 17+ Anzahl),
+PW3 (Reifenwechsel -16), PW4 (Reifenwechsel 17+),
+PW5 (Auswuchten Stahl), PW6 (Auswuchten Alu), PW7 (Rad einlagern),
+PW8 (Reifen entsorgen), PW9 (Reifen reparieren), PW10 (Radwäsche),
+PW16 (Rad de/montieren -16), PW17 (Rad de/montieren 17+)
 
-VERBOTEN: checkliste_links, checkliste_mitte, materialien_oben oder andere Felder.
-VERBOTEN: Verschachtelte Objekte.
-NUR die drei obigen flachen Arrays in "felder".
+CHECKBOX-Felder (true wenn angekreuzt/abgehakt, false wenn leer):
+MAT_ZD (Ölzapfendichtung), MAT_Z (Ölzapfen), VIG (Vignette),
+PR1 (Fahrzeug Prüfbereitstellen), PR3 (Licht einstellen),
+PR4 (Bremsprüfstand), PR5 (Abgassystem kontrollieren),
+WS2 (Niveaukontrolle), WS3 (Reifendruck kontrollieren),
+WS4 (Beleuchtung kontrollieren), WS6 (Servicerückstellung Tester),
+WS6O (Servicerückstellung ohne Tester), WS7 (Fz reinigen Auftrag Kunde),
+WS8 (Fz polieren/reinigen), WS9 (Fz polieren/versiegeln),
+AEC (Energiecheck ausgeführt), RD (Reifendrucksensor programmiert),
+ABG1 (Abgas Benzin), ABG2 (Abgas Diesel), PAR (Partikelmessung),
+KLIM134 (Klimaservice R-134), KLIM1234 (Klimaservice R1234yf),
+KLIMD (Klima desinfizieren), C (Winter/Frühling/Feriencheck),
+DS (Datenschutz beigelegt)
+
+Beispiel-Antwort:
+{
+  "dokumenttyp": "servicelaufblatt",
+  "felder": {
+    "MAT_2": 4.7,
+    "MAT_13": 0.5,
+    "MAT_ZD": true,
+    "MAT_Z": false,
+    "PR1": true,
+    "WS2": true,
+    "WS3": true,
+    "WS6": true,
+    "PW2": 4,
+    "PW6": 4,
+    "DS": true
+  },
+  "confidence": 0.88,
+  "unsichere_felder": ["MAT_2"]
+}
+
+REGELN:
+- Number-Felder: Zahl aus Handschrift übertragen. 0 wenn kein Eintrag.
+- Checkbox-Felder: true wenn Häkchen/Kreuz sichtbar, false wenn leer.
+- Felder mit 0 oder false KÖNNEN weggelassen werden.
+- KEINE Arrays, KEINE verschachtelten Objekte.
+- NUR Felder aus den obigen Listen.
 
 === LIEFERSCHEIN ===
 Extrahiere diese exakten Feldnamen flach in "felder":
@@ -445,7 +504,49 @@ const FIELD_LABELS = {
   reifenetikett:'Reifenetikett', verbrauchsmaterial:'Verbrauchsmaterial',
   lieferschein_nr:'Lieferschein-Nr.', datum:'Datum', lieferant:'Lieferant',
   kundennummer:'Kundennummer', lieferart:'Lieferart', tourencode:'Tourencode',
-  positionen:'Positionen', anzahl_positionen:'Anzahl Positionen'
+  positionen:'Positionen', anzahl_positionen:'Anzahl Positionen',
+  MAT_ZD:'Ölzapfendichtung', MAT_Z:'Ölzapfen',
+  MAT_2:'Motoröl 5W30 (L)', MAT_3:'Motoröl 5W30 DPF (L)', MAT_4:'Motoröl 0W20 (L)',
+  MAT_5:'Automatenöl ATF (L)', MAT_9:'Getriebeöl GL4/5 (L)',
+  MAT_12:'Bremsflüssigkeit DOT4 (L)', MAT_13:'Scheibenwischwasser (L)',
+  MAT_16:'Motorreiniger', MAT_17:'Klimadesinfektion',
+  MAT_18:'Frostschutz blau (L)', MAT_19:'Frostschutz grün (L)',
+  MAT_20:'Frostschutz rot (L)', MAT_21:'Frostschutz FL22 grün (L)',
+  MAT_22:'Frostschutz FL22 rot (L)', MAT_24:'Kraftstoffzusatz',
+  MAT_25:'Haldexöl / 4x4 VAG (L)', MAT_134:'Freon R-134 (pro 100gr)',
+  MAT_1234:'Freon R-1234yf (pro 1gr)', MAT_AD:'AdBlue (L)',
+  UNT:'Unterbodenschutz', SK:'Scheibenkleber', SA:'Scheibenaktivator',
+  M4:'Schraube/Mutter M4', M5:'Schraube/Mutter M5', M6:'Schraube/Mutter M6',
+  M8:'Schraube/Mutter M8', M10:'Schraube/Mutter M10', M12:'Schraube/Mutter M12',
+  NIET:'Niete', SCHR:'Kombi/Blechschraube', IMB:'Imussschraube',
+  KB:'Kabelband', KUN:'Kunststoffverbinder', BRI:'Schlauchbride',
+  SI:'Sicherung Normal', SIM:'Sicherung Mini/Flach', LOT:'Lötverbinder', ELA:'Elektroverbinder',
+  VIG:'Vignette',
+  GL1:'H1', GL2:'H3', GL3:'H4', GL4:'H7', GL5:'H11',
+  GL6:'Glassockel 12V5W', GL7:'Glassockel 12V3W', GL8:'Glassockel 12V1,2W',
+  GL9:'Glassockel 12V5W orange', GL10:'Glassockel 12V21W', GL11:'Glassockel 12V21/5W',
+  GL12:'Glassockel 12V21W oran.', GL13:'Glassockel 12/16W',
+  GL14:'Glühbirne 12V5W', GL15:'Glühbirne 12V10W', GL16:'Glühbirne 12V21W',
+  GL17:'Glühbirne 12V21W oran.', GL18:'Glühbirne 12V21/5W',
+  GL19:'HB3', GL20:'HB4', GL21:'H8', GL22:'H9', GL23:'H15', GL24:'HIR2',
+  PR1:'Fahrzeug Prüfbereitstellen', PR2:'Motor/Chassisreinigung',
+  PR3:'Licht einstellen', PR4:'Bremsprüfstand', PR5:'Abgassystem kontrollieren',
+  PR6:'Unterbodenschutz malen', PR7:'Fahrzeug prüfen',
+  WS1:'Fahrzeug reinigen Rep/Ser', WS2:'Niveaukontrolle',
+  WS3:'Reifendruck kontrollieren', WS4:'Beleuchtung kontrollieren',
+  WS5:'Fehlerspeicher ausl+lösch', WS6:'Servicerückstellung Tester',
+  WS6O:'Servicerückstellung ohne Tester', WS7:'Fz reinigen Auftrag Kunde',
+  WS8:'Fz polieren/reinigen', WS9:'Fz polieren/versiegeln/rei',
+  AEC:'Energiecheck ausgeführt',
+  PW1:'Radwechsel bis 16 Zoll', PW2:'Radwechsel ab 17 Zoll',
+  PW3:'Reifenwechsel bis 16 Zoll', PW4:'Reifenwechsel ab 17 Zoll',
+  PW5:'Rad auswuchten Stahl', PW6:'Rad auswuchten Alu',
+  PW7:'Rad einlagern', PW8:'Reifen entsorgen', PW9:'Reifen reparieren',
+  PW10:'Radwäsche', PW16:'Rad de/montieren -16', PW17:'Rad de/montieren 17+',
+  RD:'Reifendrucksensor programmiert',
+  ABG1:'Abgas Benzin', ABG2:'Abgas Diesel', PAR:'Partikelmessung',
+  KLIM134:'Klimaservice R-134', KLIM1234:'Klimaservice R1234yf',
+  KLIMD:'Klima desinfizieren', C:'Winter/Frühling/Feriencheck', DS:'Datenschutz beigelegt'
 };
 
 const DOCTYPE_LABELS = {
@@ -462,7 +563,27 @@ const TABLE_MAP = {
   lieferschein:'Lieferscheine'
 };
 
-const NUMBER_FIELDS = new Set(['profiltiefe_VL','profiltiefe_VR','profiltiefe_HL','profiltiefe_HR','confidence','zeit_total','zeit_verrechnung_h','anzahl_positionen']);
+const NUMBER_FIELDS = new Set([
+  'profiltiefe_VL','profiltiefe_VR','profiltiefe_HL','profiltiefe_HR',
+  'confidence','zeit_total','zeit_verrechnung_h','anzahl_positionen',
+  'MAT_2','MAT_3','MAT_4','MAT_5','MAT_9','MAT_12','MAT_13','MAT_16','MAT_17',
+  'MAT_18','MAT_19','MAT_20','MAT_21','MAT_22','MAT_24','MAT_25',
+  'MAT_134','MAT_1234','MAT_AD',
+  'UNT','SK','SA','M4','M5','M6','M8','M10','M12',
+  'NIET','SCHR','IMB','KB','KUN','BRI','SI','SIM','LOT','ELA',
+  'GL1','GL2','GL3','GL4','GL5','GL6','GL7','GL8','GL9','GL10',
+  'GL11','GL12','GL13','GL14','GL15','GL16','GL17','GL18','GL19',
+  'GL20','GL21','GL22','GL23','GL24',
+  'PR2','PR6','PR7','WS1','WS5',
+  'PW1','PW2','PW3','PW4','PW5','PW6','PW7','PW8','PW9','PW10','PW16','PW17'
+]);
+
+const CHECKBOX_FIELDS = new Set([
+  'MAT_ZD','MAT_Z','VIG',
+  'PR1','PR3','PR4','PR5',
+  'WS2','WS3','WS4','WS6','WS6O','WS7','WS8','WS9','AEC',
+  'RD','ABG1','ABG2','PAR','KLIM134','KLIM1234','KLIMD','C','DS'
+]);
 const ARRAY_FIELDS  = new Set(['arbeiten','notizen','hervorgehoben','reifenetikett','verbrauchsmaterial','zeitverrechnung','positionen']);
 
 // ── State ─────────────────────────────────────────────────────────────────────
@@ -667,6 +788,8 @@ async function analyzeWithClaude() {
 
 // ── Field render helpers ───────────────────────────────────────────────────────
 function renderField(keyPath, label, val, isUncertain) {
+  if (val === 'true') val = true;
+  if (val === 'false') val = false;
   if (val === null || val === undefined) val = '';
 
   if (typeof val === 'boolean') {
@@ -897,6 +1020,8 @@ async function saveToAirtable() {
     if (k === 'unsichere_felder' || k === 'zeit_total' || k === 'zeit_hinweis') return;
     if (ARRAY_FIELDS.has(k)) {
       fields[k] = typeof v === 'string' ? v : JSON.stringify(v);
+    } else if (CHECKBOX_FIELDS.has(k)) {
+      fields[k] = v === true || v === 'true' || v === 1;
     } else if (NUMBER_FIELDS.has(k)) {
       const n = parseFloat(String(v).replace(',', '.'));
       fields[k] = isNaN(n) ? 0 : n;
