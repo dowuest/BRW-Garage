@@ -1086,7 +1086,7 @@ async function saveToAirtable() {
 
   try {
     const workerBase = (CONFIG.WORKER_URL || '').replace(/\/?$/, '');
-    const res = await fetch(`${workerBase}/airtable`, {
+    const res = await fetch(`${workerBase}/supabase`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ table: tableName, fields: preparedFields })
