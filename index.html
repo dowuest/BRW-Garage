@@ -952,8 +952,7 @@ function escAttr(s) { return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot
 function collectEdits() {
   const out = {};
   $('fields-wrap').querySelectorAll('[data-key]').forEach(el => {
-    // Convert dot notation to underscore: "fahrzeug.kennschild" → "fahrzeug_kennschild"
-    const key = el.dataset.key.replace(/\./g, '_');
+    const key = el.dataset.key;
     const val = el.type === 'checkbox' ? el.checked : el.value;
     out[key] = val;
   });
@@ -1017,7 +1016,7 @@ async function saveToAirtable() {
 
   const fields = {};
   Object.entries(flatMerged).forEach(([k, v]) => {
-    if (k === 'unsichere_felder' || k === 'zeit_total' || k === 'zeit_hinweis') return;
+    if (k === 'unsichere_felder' || k === 'confidence' || k === 'zeit_total' || k === 'zeit_hinweis') return;
     if (ARRAY_FIELDS.has(k)) {
       fields[k] = typeof v === 'string' ? v : JSON.stringify(v);
     } else if (CHECKBOX_FIELDS.has(k)) {
@@ -1051,7 +1050,9 @@ async function saveToAirtable() {
   const preparedFields = Object.fromEntries(
     Object.entries(cleanFields).map(([k, v]) => [
       k,
-      (Array.isArray(v) || (typeof v === 'object' && v !== null)) ? JSON.stringify(v) : v
+      (Array.isArray(v) || (typeof v === 'object' && v !== null && typeof v !== 'boolean'))
+        ? JSON.stringify(v)
+        : v
     ])
   );
 
