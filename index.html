@@ -888,17 +888,41 @@ function buildReview(parsed) {
   wrap.innerHTML = '';
   wrap.parentElement.insertBefore(sessionBanner, wrap);
 
-  // All fields via renderField (handles primitives, booleans, arrays, objects)
-  const grp = makeGroup('Extrahierte Felder');
-  let hasFields = false;
-  Object.entries(felder).forEach(([key, val]) => {
-    if (key === 'unsichere_felder' || key === 'zeitverrechnung') return;
-    const isUncertain = uncertain.has(key.toLowerCase());
-    const label = FIELD_LABELS[key] || key;
-    renderField(key, label, val, isUncertain).forEach(r => grp.appendChild(r));
-    hasFields = true;
-  });
-  if (hasFields) wrap.appendChild(grp);
+  if (dokumenttyp === 'servicelaufblatt') {
+    const SL_GROUPS = [
+      { title: '🔧 Prüfungen', keys: ['PR1','PR2','PR3','PR4','PR5','PR6','PR7'] },
+      { title: '🏭 Werkstatt', keys: ['WS1','WS2','WS3','WS4','WS5','WS6','WS6O','WS7','WS8','WS9','AEC'] },
+      { title: '🔵 Räder', keys: ['PW1','PW2','PW3','PW4','PW5','PW6','PW7','PW8','PW9','PW10','PW16','PW17','RD'] },
+      { title: '💨 Abgas / Klima', keys: ['ABG1','ABG2','PAR','KLIM134','KLIM1234','KLIMD','C','DS'] },
+      { title: '🛢 Materialien', keys: ['MAT_2','MAT_3','MAT_4','MAT_5','MAT_9','MAT_12','MAT_13','MAT_16','MAT_17','MAT_18','MAT_19','MAT_20','MAT_21','MAT_22','MAT_24','MAT_25','MAT_134','MAT_1234','MAT_AD','MAT_ZD','MAT_Z'] },
+      { title: '💡 Glühbirnen', keys: ['VIG','GL1','GL2','GL3','GL4','GL5','GL6','GL7','GL8','GL9','GL10','GL11','GL12','GL13','GL14','GL15','GL16','GL17','GL18','GL19','GL20','GL21','GL22','GL23','GL24'] },
+      { title: '🔩 Teile', keys: ['UNT','SK','SA','M4','M5','M6','M8','M10','M12','NIET','SCHR','IMB','KB','KUN','BRI','SI','SIM','LOT','ELA'] },
+    ];
+
+    SL_GROUPS.forEach(({ title, keys }) => {
+      const grp = makeGroup(title);
+      keys.forEach(key => {
+        const val = felder.hasOwnProperty(key) ? felder[key] : (CHECKBOX_FIELDS.has(key) ? false : 0);
+        const isUncertain = uncertain.has(key.toLowerCase());
+        const label = FIELD_LABELS[key] || key;
+        renderField(key, label, val, isUncertain).forEach(r => grp.appendChild(r));
+      });
+      wrap.appendChild(grp);
+    });
+
+  } else {
+    // All fields via renderField (handles primitives, booleans, arrays, objects)
+    const grp = makeGroup('Extrahierte Felder');
+    let hasFields = false;
+    Object.entries(felder).forEach(([key, val]) => {
+      if (key === 'unsichere_felder' || key === 'zeitverrechnung') return;
+      const isUncertain = uncertain.has(key.toLowerCase());
+      const label = FIELD_LABELS[key] || key;
+      renderField(key, label, val, isUncertain).forEach(r => grp.appendChild(r));
+      hasFields = true;
+    });
+    if (hasFields) wrap.appendChild(grp);
+  }
 
   // Zeitverrechnung section
   const zv = parsed.zeitverrechnung;
