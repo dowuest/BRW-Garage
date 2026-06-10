@@ -1003,15 +1003,15 @@ function collectEdits() {
   return out;
 }
 
-// ── Airtable save ─────────────────────────────────────────────────────────────
-async function saveToAirtable() {
+// ── Supabase save ─────────────────────────────────────────────────────────────
+async function saveToSupabase() {
   const { dokumenttyp, felder = {}, confidence = 0 } = lastResult;
   const tableName = TABLE_MAP[dokumenttyp];
   if (!tableName) { showError('Unbekannter Typ', `"${dokumenttyp}" wird nicht unterstützt.`); return; }
 
   show('s-processing');
   $('proc-title').textContent = 'Wird gespeichert…';
-  $('proc-sub').textContent = `Airtable: ${DOCTYPE_LABELS[dokumenttyp]}`;
+  $('proc-sub').textContent = `Supabase: ${DOCTYPE_LABELS[dokumenttyp]}`;
 
   const edits = collectEdits();
 
@@ -1091,14 +1091,14 @@ async function saveToAirtable() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ table: tableName, fields: preparedFields })
     });
-    if (!res.ok) { const t = await res.text(); throw new Error(`Airtable ${res.status}: ${t}`); }
+    if (!res.ok) { const t = await res.text(); throw new Error(`supabase ${res.status}: ${t}`); }
     const data = await res.json();
     const recId = data.id || '–';
     $('success-detail').textContent = `${DOCTYPE_LABELS[dokumenttyp]} in „${tableName}" gespeichert.\nDatensatz-ID: ${recId}`;
     show('s-success');
   } catch (err) {
-    retryFn = saveToAirtable;
-    showError('Airtable Fehler', err.message);
+    retryFn = saveToSupabase;
+    showError('Speicherfehler', err.message);
   }
 }
 
@@ -1113,7 +1113,7 @@ function showError(title, msg) {
 $('btn-capture').addEventListener('click', captureAndCompress);
 $('btn-retake').addEventListener('click', () => show('s-camera'));
 $('btn-analyze').addEventListener('click', analyzeWithClaude);
-$('btn-confirm').addEventListener('click', saveToAirtable);
+$('btn-confirm').addEventListener('click', saveToSupabase);
 $('btn-review-retake').addEventListener('click', startCamera);
 $('btn-next').addEventListener('click', startCamera);
 $('btn-new-auftrag').addEventListener('click', () => { sessionAuftragNr = null; startCamera(); });
