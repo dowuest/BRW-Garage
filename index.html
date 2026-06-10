@@ -269,15 +269,14 @@
 if (window._noConfig || typeof CONFIG === 'undefined') {
   window.CONFIG = { CLAUDE_API_KEY: '', CLAUDE_PROXY_URL: '', WORKER_URL: '' };
 }
+const DEFAULT_WORKER_URL = 'https://brw-garage-proxy.dowuest.workers.dev';
+
 function loadStoredKeys() {
   const proxy  = localStorage.getItem('brw_proxy_url');
   const claude = localStorage.getItem('brw_claude_key');
-  if (proxy)  CONFIG.CLAUDE_PROXY_URL = proxy;
-  if (claude) CONFIG.CLAUDE_API_KEY   = claude;
-  // Derive WORKER_URL from proxy URL (same host, different path)
-  CONFIG.WORKER_URL = CONFIG.CLAUDE_PROXY_URL
-    ? CONFIG.CLAUDE_PROXY_URL.replace(/\/?$/, '')
-    : (CONFIG.WORKER_URL || '');
+  CONFIG.CLAUDE_PROXY_URL = proxy || DEFAULT_WORKER_URL;
+  if (claude) CONFIG.CLAUDE_API_KEY = claude;
+  CONFIG.WORKER_URL = CONFIG.CLAUDE_PROXY_URL.replace(/\/?$/, '');
 }
 function saveKeys() {
   const proxy  = $('inp-proxy-url').value.trim();
