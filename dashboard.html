@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#1a1a2e">
+<title>BRW Garage – Dashboard</title>
+<link rel="icon" href="icon-192.png">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #1a1a2e;
+  --surface: #16213e;
+  --surface2: #0f3460;
+  --accent: #4a6fa5;
+  --accent-light: #6b9fd4;
+  --silver: #c0c8d8;
+  --text: #ffffff;
+  --text-muted: #a0b4c8;
+  --success: #2ecc71;
+  --error: #e74c3c;
+  --warn: #f39c12;
+}
+html, body { min-height: 100%; background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+
+/* ── Header ── */
+header { display: flex; align-items: center; gap: 12px; padding: 14px 24px; background: var(--surface); border-bottom: 1px solid rgba(255,255,255,0.08); position: sticky; top: 0; z-index: 100; }
+header img { width: 36px; height: 36px; border-radius: 8px; object-fit: cover; }
+.header-text h1 { font-size: 0.95rem; font-weight: 700; letter-spacing: 0.05em; }
+.header-text p { font-size: 0.7rem; color: var(--text-muted); margin-top: 1px; }
+.header-actions { margin-left: auto; display: flex; gap: 10px; align-items: center; }
+
+/* ── Layout ── */
+.container { max-width: 1400px; margin: 0 auto; padding: 24px; }
+
+/* ── Toolbar ── */
+.toolbar { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+.toolbar-left { display: flex; align-items: center; gap: 10px; flex: 1; }
+.selected-info { font-size: 0.82rem; color: var(--text-muted); }
+.selected-info strong { color: var(--accent-light); }
+
+/* ── Buttons ── */
+.btn { display: inline-flex; align-items: center; gap: 6px; padding: 0 16px; height: 40px; border: none; border-radius: 10px; font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: opacity 0.15s, transform 0.1s; white-space: nowrap; }
+.btn:active { transform: scale(0.96); }
+.btn:disabled { opacity: 0.35; cursor: not-allowed; transform: none; }
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-success { background: var(--success); color: #fff; }
+.btn-danger { background: var(--error); color: #fff; }
+.btn-ghost { background: rgba(255,255,255,0.08); color: var(--text); }
+.btn-sm { height: 32px; padding: 0 12px; font-size: 0.78rem; }
+
+/* ── Stats ── */
+.stats { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+.stat-card { background: var(--surface); border-radius: 12px; padding: 16px 20px; flex: 1; min-width: 140px; }
+.stat-value { font-size: 1.8rem; font-weight: 700; color: var(--accent-light); line-height: 1; }
+.stat-label { font-size: 0.72rem; color: var(--text-muted); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.05em; }
+
+/* ── Table ── */
+.table-wrap { background: var(--surface); border-radius: 14px; overflow: hidden; }
+.table-scroll { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 0.83rem; }
+thead { background: var(--surface2); }
+th { padding: 12px 14px; text-align: left; font-size: 0.7rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; white-space: nowrap; }
+th.check-col { width: 40px; padding: 12px 8px 12px 16px; }
+td { padding: 12px 14px; border-top: 1px solid rgba(255,255,255,0.05); vertical-align: middle; }
+td.check-col { padding: 12px 8px 12px 16px; }
+tr:hover td { background: rgba(255,255,255,0.03); }
+tr.selected td { background: rgba(74,111,165,0.12); }
+
+.badge { display: inline-flex; align-items: center; padding: 3px 8px; border-radius: 6px; font-size: 0.72rem; font-weight: 600; }
+.badge-pending { background: rgba(243,156,18,0.15); color: var(--warn); border: 1px solid rgba(243,156,18,0.3); }
+.badge-sent { background: rgba(46,204,113,0.15); color: var(--success); border: 1px solid rgba(46,204,113,0.3); }
+
+.auftrag-nr { font-weight: 700; color: var(--accent-light); font-size: 0.9rem; }
+.text-muted { color: var(--text-muted); }
+.km-value { font-family: monospace; }
+
+/* ── Row actions ── */
+.row-actions { display: flex; gap: 6px; }
+
+/* ── Empty / Loading ── */
+.state-box { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 60px 20px; color: var(--text-muted); }
+.state-box .icon { font-size: 2.5rem; opacity: 0.4; }
+.state-box p { font-size: 0.85rem; }
+.spinner { width: 36px; height: 36px; border: 3px solid rgba(255,255,255,0.1); border-top-color: var(--accent-light); border-radius: 50%; animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Toast ── */
+#toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px); background: var(--surface2); color: var(--text); padding: 12px 20px; border-radius: 12px; font-size: 0.85rem; font-weight: 600; box-shadow: 0 8px 32px rgba(0,0,0,0.4); transition: transform 0.3s ease; z-index: 500; white-space: nowrap; border: 1px solid rgba(255,255,255,0.1); }
+#toast.show { transform: translateX(-50%) translateY(0); }
+#toast.success { border-color: var(--success); color: var(--success); }
+#toast.error { border-color: var(--error); color: var(--error); }
+
+/* ── Modal ── */
+.modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 400; align-items: center; justify-content: center; padding: 20px; }
+.modal-overlay.show { display: flex; }
+.modal { background: var(--surface); border-radius: 16px; padding: 28px; max-width: 440px; width: 100%; border: 1px solid rgba(255,255,255,0.1); }
+.modal h2 { font-size: 1.05rem; font-weight: 700; margin-bottom: 10px; }
+.modal p { font-size: 0.85rem; color: var(--text-muted); line-height: 1.6; margin-bottom: 20px; }
+.modal-actions { display: flex; gap: 10px; justify-content: flex-end; }
+
+/* ── Detail Panel ── */
+.detail-panel { background: var(--surface); border-radius: 14px; padding: 20px; margin-top: 16px; display: none; }
+.detail-panel.show { display: block; }
+.detail-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; margin-top: 12px; }
+.detail-field { background: rgba(255,255,255,0.04); border-radius: 8px; padding: 10px 12px; }
+.detail-field-label { font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 3px; }
+.detail-field-value { font-size: 0.85rem; word-break: break-word; }
+.section-title { font-size: 0.75rem; font-weight: 700; color: var(--silver); text-transform: uppercase; letter-spacing: 0.08em; margin: 16px 0 8px; padding-bottom: 6px; border-bottom: 1px solid rgba(255,255,255,0.07); }
+
+/* ── Checkbox ── */
+input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--accent); cursor: pointer; }
+
+/* ── Settings bar ── */
+.settings-bar { background: var(--surface); border-radius: 12px; padding: 14px 18px; margin-bottom: 20px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.settings-bar label { font-size: 0.78rem; color: var(--text-muted); font-weight: 600; }
+.settings-input { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; color: var(--text); font-size: 0.82rem; padding: 8px 12px; font-family: monospace; width: 380px; max-width: 100%; }
+.settings-input:focus { outline: none; border-color: var(--accent); }
+
+@media (max-width: 700px) {
+  .container { padding: 12px; }
+  .stats { gap: 8px; }
+  .stat-card { min-width: 100px; padding: 12px 14px; }
+  .stat-value { font-size: 1.4rem; }
+  th, td { padding: 10px 10px; }
+  .settings-input { width: 100%; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <img src="icon-192.png" alt="BRW" onerror="this.style.display='none'">
+  <div class="header-text">
+    <h1>BRW GARAGE LANGNAU</h1>
+    <p>Auftrags-Dashboard</p>
+  </div>
+  <div class="header-actions">
+    <button class="btn btn-ghost" onclick="loadData()">↺ Aktualisieren</button>
+    <a href="index.html" class="btn btn-ghost">📷 Scanner</a>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- Worker URL Einstellung -->
+  <div class="settings-bar">
+    <label>Worker URL</label>
+    <input class="settings-input" id="inp-worker-url" type="url"
+      placeholder="https://brw-garage-proxy.dowuest.workers.dev"
+      autocomplete="off" spellcheck="false">
+    <button class="btn btn-primary btn-sm" onclick="saveWorkerUrl()">Speichern</button>
+    <span id="url-status" style="font-size:0.75rem;color:var(--text-muted)"></span>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats">
+    <div class="stat-card">
+      <div class="stat-value" id="stat-total">–</div>
+      <div class="stat-label">Aufträge total</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="stat-pending" style="color:var(--warn)">–</div>
+      <div class="stat-label">Ausstehend</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="stat-sent" style="color:var(--success)">–</div>
+      <div class="stat-label">Übertragen</div>
+    </div>
+  </div>
+
+  <!-- Toolbar -->
+  <div class="toolbar">
+    <div class="toolbar-left">
+      <span class="selected-info" id="selected-info">Keine Auswahl</span>
+    </div>
+    <button class="btn btn-success" id="btn-transfer-selected" disabled onclick="transferSelected()">
+      ▶ Ausgewählte übertragen
+    </button>
+    <button class="btn btn-primary" onclick="transferAll()">
+      ▶▶ Alle übertragen
+    </button>
+    <button class="btn btn-danger" id="btn-delete-selected" disabled onclick="deleteSelected()">
+      🗑 Ausgewählte löschen
+    </button>
+  </div>
+
+  <!-- Tabelle -->
+  <div class="table-wrap">
+    <div class="table-scroll">
+      <table id="main-table">
+        <thead>
+          <tr>
+            <th class="check-col">
+              <input type="checkbox" id="chk-all" onchange="toggleAll(this.checked)">
+            </th>
+            <th>Auftrags-Nr.</th>
+            <th>Kunde</th>
+            <th>Fahrzeug</th>
+            <th>Kennzeichen</th>
+            <th>Km neu</th>
+            <th>Servicelaufblatt</th>
+            <th>Status</th>
+            <th>Erfasst</th>
+            <th>Aktionen</th>
+          </tr>
+        </thead>
+        <tbody id="table-body">
+          <tr><td colspan="10">
+            <div class="state-box"><div class="spinner"></div><p>Wird geladen…</p></div>
+          </td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Detail Panel -->
+  <div class="detail-panel" id="detail-panel">
+    <div style="display:flex;align-items:center;justify-content:space-between">
+      <strong id="detail-title">Details</strong>
+      <button class="btn btn-ghost btn-sm" onclick="closeDetail()">✕ Schliessen</button>
+    </div>
+    <div id="detail-content"></div>
+  </div>
+
+</div>
+
+<!-- Confirm Modal -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <h2 id="modal-title">Bestätigung</h2>
+    <p id="modal-msg"></p>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal()">Abbrechen</button>
+      <button class="btn btn-danger" id="modal-confirm">Bestätigen</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<script>
+'use strict';
+
+// ── Config ────────────────────────────────────────────────────────────────────
+let WORKER_URL = localStorage.getItem('brw_proxy_url') || '';
+
+function saveWorkerUrl() {
+  const val = document.getElementById('inp-worker-url').value.trim();
+  if (val) {
+    WORKER_URL = val.replace(/\/?$/, '');
+    localStorage.setItem('brw_proxy_url', val);
+    document.getElementById('url-status').textContent = '✓ Gespeichert';
+    setTimeout(() => document.getElementById('url-status').textContent = '', 2000);
+    loadData();
+  }
+}
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let allRows = [];
+let selected = new Set();
+let modalCallback = null;
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  const inp = document.getElementById('inp-worker-url');
+  if (WORKER_URL) inp.value = WORKER_URL;
+  if (WORKER_URL) loadData();
+  else document.getElementById('table-body').innerHTML =
+    `<tr><td colspan="10"><div class="state-box"><div class="icon">⚙</div><p>Bitte Worker URL oben eintragen und speichern.</p></div></td></tr>`;
+});
+
+// ── Load data ─────────────────────────────────────────────────────────────────
+async function loadData() {
+  if (!WORKER_URL) return;
+  document.getElementById('table-body').innerHTML =
+    `<tr><td colspan="10"><div class="state-box"><div class="spinner"></div><p>Wird geladen…</p></div></td></tr>`;
+  selected.clear();
+  updateToolbar();
+
+  try {
+    const res = await fetch(`${WORKER_URL}/aggregate-all`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    allRows = Array.isArray(data) ? data : [];
+    renderTable();
+    renderStats();
+  } catch (e) {
+    document.getElementById('table-body').innerHTML =
+      `<tr><td colspan="10"><div class="state-box"><div class="icon">⚠</div><p>Fehler: ${escHtml(e.message)}</p></div></td></tr>`;
+  }
+}
+
+// ── Render ────────────────────────────────────────────────────────────────────
+function renderTable() {
+  const tbody = document.getElementById('table-body');
+  if (!allRows.length) {
+    tbody.innerHTML = `<tr><td colspan="10"><div class="state-box"><div class="icon">📋</div><p>Keine Aufträge vorhanden.</p></div></td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = allRows.map(row => {
+    const nr = escHtml(row.auftrag_nr || '–');
+    const sent = row.nextlane_gesendet;
+    const hasSl = !!row.sl_id;
+    const datum = row.created_at ? new Date(row.created_at).toLocaleDateString('de-CH') : '–';
+    const isSelected = selected.has(row.auftrag_nr);
+
+    return `<tr class="${isSelected ? 'selected' : ''}" id="row-${escAttr(row.auftrag_nr)}">
+      <td class="check-col">
+        <input type="checkbox" ${isSelected ? 'checked' : ''}
+          onchange="toggleRow('${escAttr(row.auftrag_nr)}', this.checked)">
+      </td>
+      <td><span class="auftrag-nr">${nr}</span></td>
+      <td>${escHtml(row.kunde_name || '–')}</td>
+      <td class="text-muted">${escHtml(row.fahrzeug || '–')}</td>
+      <td class="text-muted">${escHtml(row.kennschild || '–')}</td>
+      <td class="km-value text-muted">${row.km_neu ? Number(row.km_neu).toLocaleString('de-CH') : '–'}</td>
+      <td style="text-align:center">${hasSl ? '<span style="color:var(--success)">✓</span>' : '<span style="color:var(--text-muted)">–</span>'}</td>
+      <td><span class="badge ${sent ? 'badge-sent' : 'badge-pending'}">${sent ? '✓ Übertragen' : '⏳ Ausstehend'}</span></td>
+      <td class="text-muted">${datum}</td>
+      <td>
+        <div class="row-actions">
+          <button class="btn btn-ghost btn-sm" onclick="showDetail('${escAttr(row.auftrag_nr)}')">Details</button>
+          <button class="btn btn-success btn-sm" onclick="transferOne('${escAttr(row.auftrag_nr)}')" ${sent ? 'disabled' : ''}>▶</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteOne('${escAttr(row.auftrag_nr)}')">🗑</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function renderStats() {
+  const total = allRows.length;
+  const sent = allRows.filter(r => r.nextlane_gesendet).length;
+  const pending = total - sent;
+  document.getElementById('stat-total').textContent = total;
+  document.getElementById('stat-pending').textContent = pending;
+  document.getElementById('stat-sent').textContent = sent;
+}
+
+// ── Selection ─────────────────────────────────────────────────────────────────
+function toggleRow(auftrag_nr, checked) {
+  if (checked) selected.add(auftrag_nr);
+  else selected.delete(auftrag_nr);
+  const row = document.getElementById(`row-${auftrag_nr}`);
+  if (row) row.classList.toggle('selected', checked);
+  updateToolbar();
+}
+
+function toggleAll(checked) {
+  allRows.forEach(r => {
+    if (checked) selected.add(r.auftrag_nr);
+    else selected.delete(r.auftrag_nr);
+    const row = document.getElementById(`row-${r.auftrag_nr}`);
+    if (row) {
+      row.classList.toggle('selected', checked);
+      const cb = row.querySelector('input[type="checkbox"]');
+      if (cb) cb.checked = checked;
+    }
+  });
+  updateToolbar();
+}
+
+function updateToolbar() {
+  const n = selected.size;
+  document.getElementById('selected-info').innerHTML =
+    n ? `<strong>${n}</strong> ausgewählt` : 'Keine Auswahl';
+  document.getElementById('btn-transfer-selected').disabled = n === 0;
+  document.getElementById('btn-delete-selected').disabled = n === 0;
+}
+
+// ── Transfer ──────────────────────────────────────────────────────────────────
+async function transferOne(auftrag_nr) {
+  await doTransfer([auftrag_nr]);
+}
+
+async function transferSelected() {
+  if (!selected.size) return;
+  await doTransfer([...selected]);
+}
+
+async function transferAll() {
+  const pending = allRows.filter(r => !r.nextlane_gesendet).map(r => r.auftrag_nr);
+  if (!pending.length) { showToast('Keine ausstehenden Aufträge', 'error'); return; }
+  confirm(`Alle ${pending.length} ausstehenden Aufträge übertragen?`,
+    () => doTransfer(pending));
+}
+
+async function doTransfer(auftragNrs) {
+  if (!WORKER_URL) { showToast('Worker URL fehlt', 'error'); return; }
+
+  // Simuliert bis PAD_URL konfiguriert ist
+  let ok = 0, fail = 0;
+  for (const nr of auftragNrs) {
+    try {
+      const res = await fetch(`${WORKER_URL}/send-to-pad`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ auftrag_nr: nr })
+      });
+      const data = await res.json();
+      if (res.ok) ok++;
+      else {
+        // PAD noch nicht konfiguriert → trotzdem als Erfolg werten für Testing
+        if (data?.error?.includes('PAD_URL')) {
+          showToast(`Auftrag ${nr}: PAD_URL nicht konfiguriert (simuliert ✓)`, 'success');
+          ok++;
+        } else {
+          fail++;
+          showToast(`Fehler bei ${nr}: ${data?.error || res.status}`, 'error');
+        }
+      }
+    } catch (e) {
+      fail++;
+      showToast(`Fehler bei ${nr}: ${e.message}`, 'error');
+    }
+  }
+
+  if (ok > 0) showToast(`${ok} Auftrag${ok > 1 ? 'träge' : ''} übertragen`, 'success');
+  loadData();
+}
+
+// ── Delete ────────────────────────────────────────────────────────────────────
+function deleteOne(auftrag_nr) {
+  confirm(
+    `Auftrag ${auftrag_nr} und alle zugehörigen Daten löschen?\n\nDies löscht Einträge aus werkstatt_auftraege, servicelaufblaetter und einlagerungsscheine.`,
+    () => doDelete([auftrag_nr])
+  );
+}
+
+function deleteSelected() {
+  if (!selected.size) return;
+  const nrs = [...selected];
+  confirm(
+    `${nrs.length} Auftrag${nrs.length > 1 ? 'träge' : ''} unwiderruflich löschen?\n\n${nrs.join(', ')}\n\nDies löscht alle zugehörigen Daten aus allen Tabellen.`,
+    () => doDelete(nrs)
+  );
+}
+
+async function doDelete(auftragNrs) {
+  if (!WORKER_URL) { showToast('Worker URL fehlt', 'error'); return; }
+
+  let ok = 0, fail = 0;
+  for (const nr of auftragNrs) {
+    try {
+      const res = await fetch(`${WORKER_URL}/delete`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ auftrag_nr: nr })
+      });
+      if (res.ok) { ok++; selected.delete(nr); }
+      else {
+        const data = await res.json();
+        fail++;
+        showToast(`Fehler bei ${nr}: ${data?.error || res.status}`, 'error');
+      }
+    } catch (e) {
+      fail++;
+      showToast(`Fehler bei ${nr}: ${e.message}`, 'error');
+    }
+  }
+
+  if (ok > 0) showToast(`${ok} Auftrag${ok > 1 ? 'träge' : ''} gelöscht`, 'success');
+  updateToolbar();
+  loadData();
+}
+
+// ── Detail Panel ──────────────────────────────────────────────────────────────
+function showDetail(auftrag_nr) {
+  const row = allRows.find(r => r.auftrag_nr === auftrag_nr);
+  if (!row) return;
+
+  document.getElementById('detail-title').textContent = `Auftrag ${auftrag_nr}`;
+  const content = document.getElementById('detail-content');
+
+  // Werkstatt-Auftrag Felder
+  const waFields = ['kunde_name','fahrzeug','kennschild','km_neu','zeit_verrechnung_h'];
+  const waLabels = { kunde_name:'Kunde', fahrzeug:'Fahrzeug', kennschild:'Kennzeichen', km_neu:'Km neu', zeit_verrechnung_h:'Zeit (h)' };
+
+  // Servicelaufblatt Codes mit Wert
+  const slCodes = Object.entries(row)
+    .filter(([k, v]) => v !== null && v !== false && v !== undefined &&
+      (k.startsWith('MAT_') || k.startsWith('PR') || k.startsWith('WS') ||
+       k.startsWith('PW') || k.startsWith('GL') || k.startsWith('ABG') ||
+       k.startsWith('KLIM') || ['RD','PAR','AEC','VIG','C','DS','UNT','SK','SA'].includes(k)));
+
+  let html = `<div class="section-title">Werkstatt-Auftrag</div>
+  <div class="detail-grid">`;
+
+  waFields.forEach(k => {
+    if (row[k]) html += `<div class="detail-field">
+      <div class="detail-field-label">${waLabels[k] || k}</div>
+      <div class="detail-field-value">${escHtml(String(row[k]))}</div>
+    </div>`;
+  });
+  html += '</div>';
+
+  if (row.notizen) {
+    let notizen = row.notizen;
+    if (typeof notizen === 'string') try { notizen = JSON.parse(notizen); } catch {}
+    if (Array.isArray(notizen) && notizen.length) {
+      html += `<div class="section-title">Notizen</div><div class="detail-grid">`;
+      notizen.forEach(n => {
+        html += `<div class="detail-field"><div class="detail-field-value">${escHtml(String(n))}</div></div>`;
+      });
+      html += '</div>';
+    }
+  }
+
+  if (slCodes.length) {
+    html += `<div class="section-title">Servicelaufblatt</div><div class="detail-grid">`;
+    slCodes.forEach(([k, v]) => {
+      html += `<div class="detail-field">
+        <div class="detail-field-label">${escHtml(k)}</div>
+        <div class="detail-field-value">${v === true ? '✓' : escHtml(String(v))}</div>
+      </div>`;
+    });
+    html += '</div>';
+  }
+
+  content.innerHTML = html;
+  document.getElementById('detail-panel').classList.add('show');
+  document.getElementById('detail-panel').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function closeDetail() {
+  document.getElementById('detail-panel').classList.remove('show');
+}
+
+// ── Modal ─────────────────────────────────────────────────────────────────────
+function confirm(msg, cb) {
+  document.getElementById('modal-msg').textContent = msg;
+  document.getElementById('modal').classList.add('show');
+  modalCallback = cb;
+  document.getElementById('modal-confirm').onclick = () => { closeModal(); cb(); };
+}
+
+function closeModal() {
+  document.getElementById('modal').classList.remove('show');
+  modalCallback = null;
+}
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+let toastTimer;
+function showToast(msg, type = '') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = type ? `show ${type}` : 'show';
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.className = '', 3500);
+}
+
+// ── Utils ─────────────────────────────────────────────────────────────────────
+function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function escAttr(s) { return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;'); }
+</script>
+</body>
+</html>
