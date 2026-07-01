@@ -679,8 +679,8 @@ async function analyzeWithClaude() {
   $('proc-title').textContent = 'Wird analysiert…';
   $('proc-sub').textContent = 'Claude Vision liest das Dokument aus';
   const requestBody = {
-    model: 'claude-opus-4-5',
-    max_tokens: 2000,
+    model: 'claude-sonnet-4-6',
+    max_tokens: 1024,
     messages: [{
       role: 'user',
       content: [
