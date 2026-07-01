@@ -1,136 +1,110 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <meta name="theme-color" content="#1a1a2e">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="BRW Garage">
-  <title>BRW Garage – Laufblätter</title>
-  <link rel="manifest" href="manifest.json">
-  <link rel="icon" href="icon-192.png">
-  <link rel="apple-touch-icon" href="icon-192.png">
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    :root {
-      --bg: #1a1a2e;
-      --surface: #16213e;
-      --surface2: #0f3460;
-      --accent: #4a6fa5;
-      --accent-light: #6b9fd4;
-      --silver: #c0c8d8;
-      --text: #ffffff;
-      --text-muted: #a0b4c8;
-      --success: #2ecc71;
-      --error: #e74c3c;
-      --warn: #f39c12;
-      --orange: #e67e22;
-    }
-    html, body { height: 100%; background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; overflow: hidden; -webkit-tap-highlight-color: transparent; }
-    #app { display: flex; flex-direction: column; height: 100dvh; height: 100vh; }
-
-    /* ── Header ── */
-    header { display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: var(--surface); border-bottom: 1px solid rgba(255,255,255,0.08); flex-shrink: 0; }
-    header img { width: 36px; height: 36px; border-radius: 8px; object-fit: cover; }
-    .header-text h1 { font-size: 0.95rem; font-weight: 700; letter-spacing: 0.05em; }
-    .header-text p { font-size: 0.7rem; color: var(--text-muted); margin-top: 1px; }
-
-    /* ── Screens ── */
-    main { flex: 1; overflow-y: auto; overflow-x: hidden; position: relative; }
-    .screen { display: none; flex-direction: column; align-items: center; min-height: 100%; padding: 16px; gap: 16px; animation: fadeIn 0.2s ease; }
-    .screen.active { display: flex; }
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
-
-    /* ── Camera ── */
-    #video-wrap { position: relative; width: 100%; max-width: 480px; border-radius: 14px; overflow: hidden; background: #000; aspect-ratio: 4/3; box-shadow: 0 8px 32px rgba(0,0,0,0.6); }
-    #video { width: 100%; height: 100%; object-fit: cover; display: block; }
-    .corner { position: absolute; width: 24px; height: 24px; border-color: rgba(255,255,255,0.85); border-style: solid; }
-    .corner.tl { top:14px; left:14px; border-width: 3px 0 0 3px; border-radius: 3px 0 0 0; }
-    .corner.tr { top:14px; right:14px; border-width: 3px 3px 0 0; border-radius: 0 3px 0 0; }
-    .corner.bl { bottom:14px; left:14px; border-width: 0 0 3px 3px; border-radius: 0 0 0 3px; }
-    .corner.br { bottom:14px; right:14px; border-width: 0 3px 3px 0; border-radius: 0 0 0 3px; }
-    .cam-hint { font-size: 0.8rem; color: var(--text-muted); text-align: center; }
-    #btn-capture { width: 80px; height: 80px; border-radius: 50%; border: 4px solid #fff; background: transparent; cursor: pointer; position: relative; flex-shrink: 0; transition: transform 0.1s; }
-    #btn-capture::after { content: ''; position: absolute; inset: 6px; background: #fff; border-radius: 50%; transition: background 0.15s; }
-    #btn-capture:active { transform: scale(0.92); }
-    #btn-capture:active::after { background: #ccc; }
-
-    /* ── Upload button ── */
-    #btn-upload { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; max-width: 480px; min-height: 48px; border: 2px dashed rgba(255,255,255,0.25); border-radius: 12px; background: transparent; color: var(--text-muted); font-size: 0.88rem; font-weight: 600; cursor: pointer; transition: border-color 0.15s, color 0.15s; }
-    #btn-upload:active, #btn-upload:hover { border-color: var(--accent-light); color: var(--accent-light); }
-
-    /* ── PDF page selector ── */
-    #pdf-page-selector { display: none; align-items: center; justify-content: center; gap: 14px; width: 100%; max-width: 480px; background: var(--surface); border-radius: 12px; padding: 12px 16px; }
-    #pdf-page-selector.visible { display: flex; }
-    #pdf-page-selector button { min-width: 44px; min-height: 44px; border: none; border-radius: 10px; background: var(--surface2); color: var(--text); font-size: 1.1rem; cursor: pointer; }
-    #pdf-page-selector button:disabled { opacity: 0.3; cursor: default; }
-    #pdf-page-info { font-size: 0.85rem; color: var(--text-muted); text-align: center; flex: 1; }
-
-    /* ── Preview ── */
-    #preview-img { width: 100%; max-width: 480px; border-radius: 14px; object-fit: contain; max-height: 50vh; box-shadow: 0 8px 32px rgba(0,0,0,0.5); }
-
-    /* ── Buttons ── */
-    .btn-row { display: flex; gap: 12px; width: 100%; max-width: 480px; }
-    .btn { flex: 1; min-height: 52px; border: none; border-radius: 12px; font-size: 0.95rem; font-weight: 600; cursor: pointer; transition: transform 0.1s; letter-spacing: 0.01em; padding: 0 12px; }
-    .btn:active { transform: scale(0.96); }
-    .btn-secondary { background: rgba(255,255,255,0.1); color: var(--text); }
-    .btn-primary { background: var(--accent); color: #fff; }
-    .btn-success { background: var(--success); color: #fff; }
-
-    /* ── Processing ── */
-    .processing-box { display: flex; flex-direction: column; align-items: center; gap: 20px; margin-top: 60px; }
-    .spinner { width: 52px; height: 52px; border: 4px solid rgba(255,255,255,0.12); border-top-color: var(--accent-light); border-radius: 50%; animation: spin 0.8s linear infinite; }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    .proc-title { font-size: 1.15rem; font-weight: 700; }
-    .proc-sub { font-size: 0.82rem; color: var(--text-muted); text-align: center; }
-
-    /* ── Review ── */
-    .review-top { width: 100%; max-width: 600px; display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
-    .doctype-badge { display: inline-flex; align-items: center; padding: 8px 16px; border-radius: 20px; font-size: 0.82rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; background: var(--surface2); border: 1px solid var(--accent); color: var(--accent-light); }
-    .conf-badge { display: inline-flex; align-items: center; padding: 6px 12px; border-radius: 12px; font-size: 0.78rem; font-weight: 700; }
-    .conf-green { background: rgba(46,204,113,0.18); color: var(--success); border: 1px solid var(--success); }
-    .conf-orange { background: rgba(243,156,18,0.18); color: var(--warn); border: 1px solid var(--warn); }
-    .conf-red { background: rgba(231,76,60,0.18); color: var(--error); border: 1px solid var(--error); }
-    .fields-wrap { width: 100%; max-width: 600px; display: flex; flex-direction: column; gap: 10px; }
-    .field-group { background: var(--surface); border-radius: 12px; padding: 14px; }
-    .field-label { font-size: 0.68rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 5px; }
-    .field-input { width: 100%; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; color: var(--text); font-size: 0.88rem; padding: 10px 12px; font-family: inherit; resize: vertical; }
-    .field-input:focus { outline: none; border-color: var(--accent); }
-    .field-input.uncertain { border-color: var(--orange) !important; background: rgba(230,126,34,0.08); }
-    .sec-title { font-size: 0.72rem; font-weight: 700; color: var(--silver); text-transform: uppercase; letter-spacing: 0.08em; padding-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.07); margin-bottom: 10px; }
-    .field-row { margin-bottom: 10px; }
-    .field-row:last-child { margin-bottom: 0; }
-    .review-actions { width: 100%; max-width: 600px; display: flex; flex-direction: column; gap: 10px; padding-bottom: 24px; }
-
-    /* ── Result ── */
-    .result-icon { width: 72px; height: 72px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2rem; margin-top: 40px; }
-    .result-title { font-size: 1.2rem; font-weight: 700; text-align: center; }
-    .result-sub { font-size: 0.83rem; color: var(--text-muted); text-align: center; max-width: 300px; line-height: 1.6; white-space: pre-wrap; }
-    .error-box { background: rgba(231,76,60,0.1); border: 1px solid rgba(231,76,60,0.3); border-radius: 12px; padding: 16px; width: 100%; max-width: 480px; }
-    .error-box p { font-size: 0.83rem; color: #f5a5a0; line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
-
-    /* ── Settings screen ── */
-    .settings-wrap { width: 100%; max-width: 500px; display: flex; flex-direction: column; gap: 16px; padding-bottom: 24px; }
-    .settings-group { background: var(--surface); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 8px; }
-    .settings-label { font-size: 0.72rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; }
-    .settings-input { width: 100%; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; color: var(--text); font-size: 0.85rem; padding: 12px; font-family: monospace; }
-    .settings-input:focus { outline: none; border-color: var(--accent); }
-    .settings-hint { font-size: 0.72rem; color: var(--text-muted); line-height: 1.4; }
-    .key-status { display: inline-flex; align-items: center; gap: 5px; font-size: 0.72rem; font-weight: 600; padding: 3px 8px; border-radius: 8px; }
-    .key-ok  { background: rgba(46,204,113,0.15); color: var(--success); }
-    .key-missing { background: rgba(231,76,60,0.15); color: var(--error); }
-    .settings-title { font-size: 1.1rem; font-weight: 700; align-self: flex-start; }
-    .settings-sub { font-size: 0.8rem; color: var(--text-muted); align-self: flex-start; }
-
-    /* ── Header gear button ── */
-    #btn-settings { margin-left: auto; background: none; border: none; color: var(--text-muted); font-size: 1.3rem; cursor: pointer; padding: 6px; border-radius: 8px; line-height: 1; flex-shrink: 0; }
-    #btn-settings:active { background: rgba(255,255,255,0.1); }
-
-    /* ── Banners ── */
-    #offline-banner { display: none; position: fixed; bottom: 0; left: 0; right: 0; background: var(--warn); color: #1a1a2e; text-align: center; padding: 10px; font-size: 0.8rem; font-weight: 600; z-index: 200; }
-    #offline-banner.on { display: block; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#1a1a2e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="BRW Garage">
+<title>BRW Garage – Laufblätter</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #1a1a2e;
+  --surface: #16213e;
+  --surface2: #0f3460;
+  --accent: #4a6fa5;
+  --accent-light: #6b9fd4;
+  --silver: #c0c8d8;
+  --text: #ffffff;
+  --text-muted: #a0b4c8;
+  --success: #2ecc71;
+  --error: #e74c3c;
+  --warn: #f39c12;
+  --orange: #e67e22;
+}
+html, body { height: 100%; background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; overflow: hidden; -webkit-tap-highlight-color: transparent; }
+#app { display: flex; flex-direction: column; height: 100dvh; height: 100vh; }
+header { display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: var(--surface); border-bottom: 1px solid rgba(255,255,255,0.08); flex-shrink: 0; }
+header img { width: 36px; height: 36px; border-radius: 8px; object-fit: cover; }
+.header-text h1 { font-size: 0.95rem; font-weight: 700; letter-spacing: 0.05em; }
+.header-text p { font-size: 0.7rem; color: var(--text-muted); margin-top: 1px; }
+main { flex: 1; overflow-y: auto; overflow-x: hidden; position: relative; }
+.screen { display: none; flex-direction: column; align-items: center; min-height: 100%; padding: 16px; gap: 16px; animation: fadeIn 0.2s ease; }
+.screen.active { display: flex; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+#video-wrap { position: relative; width: 100%; max-width: 480px; border-radius: 14px; overflow: hidden; background: #000; aspect-ratio: 4/3; box-shadow: 0 8px 32px rgba(0,0,0,0.6); }
+#video { width: 100%; height: 100%; object-fit: cover; display: block; }
+.corner { position: absolute; width: 24px; height: 24px; border-color: rgba(255,255,255,0.85); border-style: solid; }
+.corner.tl { top:14px; left:14px; border-width: 3px 0 0 3px; border-radius: 3px 0 0 0; }
+.corner.tr { top:14px; right:14px; border-width: 3px 3px 0 0; border-radius: 0 3px 0 0; }
+.corner.bl { bottom:14px; left:14px; border-width: 0 0 3px 3px; border-radius: 0 0 0 3px; }
+.corner.br { bottom:14px; right:14px; border-width: 0 3px 3px 0; border-radius: 0 0 0 3px; }
+.cam-hint { font-size: 0.8rem; color: var(--text-muted); text-align: center; }
+#btn-capture { width: 80px; height: 80px; border-radius: 50%; border: 4px solid #fff; background: transparent; cursor: pointer; position: relative; flex-shrink: 0; transition: transform 0.1s; }
+#btn-capture::after { content: ''; position: absolute; inset: 6px; background: #fff; border-radius: 50%; transition: background 0.15s; }
+#btn-capture:active { transform: scale(0.92); }
+#btn-capture:active::after { background: #ccc; }
+#btn-upload { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; max-width: 480px; min-height: 48px; border: 2px dashed rgba(255,255,255,0.25); border-radius: 12px; background: transparent; color: var(--text-muted); font-size: 0.88rem; font-weight: 600; cursor: pointer; transition: border-color 0.15s, color 0.15s; }
+#btn-upload:active, #btn-upload:hover { border-color: var(--accent-light); color: var(--accent-light); }
+#pdf-page-selector { display: none; align-items: center; justify-content: center; gap: 14px; width: 100%; max-width: 480px; background: var(--surface); border-radius: 12px; padding: 12px 16px; }
+#pdf-page-selector.visible { display: flex; }
+#pdf-page-selector button { min-width: 44px; min-height: 44px; border: none; border-radius: 10px; background: var(--surface2); color: var(--text); font-size: 1.1rem; cursor: pointer; }
+#pdf-page-selector button:disabled { opacity: 0.3; cursor: default; }
+#pdf-page-info { font-size: 0.85rem; color: var(--text-muted); text-align: center; flex: 1; }
+#preview-img { width: 100%; max-width: 480px; border-radius: 14px; object-fit: contain; max-height: 50vh; box-shadow: 0 8px 32px rgba(0,0,0,0.5); }
+.btn-row { display: flex; gap: 12px; width: 100%; max-width: 480px; }
+.btn { flex: 1; min-height: 52px; border: none; border-radius: 12px; font-size: 0.95rem; font-weight: 600; cursor: pointer; transition: transform 0.1s; letter-spacing: 0.01em; padding: 0 12px; }
+.btn:active { transform: scale(0.96); }
+.btn-secondary { background: rgba(255,255,255,0.1); color: var(--text); }
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-success { background: var(--success); color: #fff; }
+.processing-box { display: flex; flex-direction: column; align-items: center; gap: 20px; margin-top: 60px; }
+.spinner { width: 52px; height: 52px; border: 4px solid rgba(255,255,255,0.12); border-top-color: var(--accent-light); border-radius: 50%; animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.proc-title { font-size: 1.15rem; font-weight: 700; }
+.proc-sub { font-size: 0.82rem; color: var(--text-muted); text-align: center; }
+.review-top { width: 100%; max-width: 600px; display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.doctype-badge { display: inline-flex; align-items: center; padding: 8px 16px; border-radius: 20px; font-size: 0.82rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; background: var(--surface2); border: 1px solid var(--accent); color: var(--accent-light); }
+.conf-badge { display: inline-flex; align-items: center; padding: 6px 12px; border-radius: 12px; font-size: 0.78rem; font-weight: 700; }
+.conf-green { background: rgba(46,204,113,0.18); color: var(--success); border: 1px solid var(--success); }
+.conf-orange { background: rgba(243,156,18,0.18); color: var(--warn); border: 1px solid var(--warn); }
+.conf-red { background: rgba(231,76,60,0.18); color: var(--error); border: 1px solid var(--error); }
+.fields-wrap { width: 100%; max-width: 600px; display: flex; flex-direction: column; gap: 10px; }
+.field-group { background: var(--surface); border-radius: 12px; padding: 14px; }
+.field-label { font-size: 0.68rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 5px; }
+.field-input { width: 100%; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; color: var(--text); font-size: 0.88rem; padding: 10px 12px; font-family: inherit; resize: vertical; }
+.field-input:focus { outline: none; border-color: var(--accent); }
+.field-input.uncertain { border-color: var(--orange) !important; background: rgba(230,126,34,0.08); }
+.sec-title { font-size: 0.72rem; font-weight: 700; color: var(--silver); text-transform: uppercase; letter-spacing: 0.08em; padding-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.07); margin-bottom: 10px; }
+.field-row { margin-bottom: 10px; }
+.field-row:last-child { margin-bottom: 0; }
+.review-actions { width: 100%; max-width: 600px; display: flex; flex-direction: column; gap: 10px; padding-bottom: 24px; }
+.result-icon { width: 72px; height: 72px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2rem; margin-top: 40px; }
+.result-title { font-size: 1.2rem; font-weight: 700; text-align: center; }
+.result-sub { font-size: 0.83rem; color: var(--text-muted); text-align: center; max-width: 300px; line-height: 1.6; white-space: pre-wrap; }
+.error-box { background: rgba(231,76,60,0.1); border: 1px solid rgba(231,76,60,0.3); border-radius: 12px; padding: 16px; width: 100%; max-width: 480px; }
+.error-box p { font-size: 0.83rem; color: #f5a5a0; line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
+.settings-wrap { width: 100%; max-width: 500px; display: flex; flex-direction: column; gap: 16px; padding-bottom: 24px; }
+.settings-group { background: var(--surface); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 8px; }
+.settings-label { font-size: 0.72rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; }
+.settings-input { width: 100%; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; color: var(--text); font-size: 0.85rem; padding: 12px; font-family: monospace; }
+.settings-input:focus { outline: none; border-color: var(--accent); }
+.settings-hint { font-size: 0.72rem; color: var(--text-muted); line-height: 1.4; }
+.key-status { display: inline-flex; align-items: center; gap: 5px; font-size: 0.72rem; font-weight: 600; padding: 3px 8px; border-radius: 8px; }
+.key-ok { background: rgba(46,204,113,0.15); color: var(--success); }
+.key-missing { background: rgba(231,76,60,0.15); color: var(--error); }
+.settings-title { font-size: 1.1rem; font-weight: 700; align-self: flex-start; }
+.settings-sub { font-size: 0.8rem; color: var(--text-muted); align-self: flex-start; }
+#btn-settings { margin-left: auto; background: none; border: none; color: var(--text-muted); font-size: 1.3rem; cursor: pointer; padding: 6px; border-radius: 8px; line-height: 1; flex-shrink: 0; }
+#btn-settings:active { background: rgba(255,255,255,0.1); }
+#offline-banner { display: none; position: fixed; bottom: 0; left: 0; right: 0; background: var(--warn); color: #1a1a2e; text-align: center; padding: 10px; font-size: 0.8rem; font-weight: 600; z-index: 200; }
+#offline-banner.on { display: block; }
+</style>
 </head>
 <body>
 <div id="app">
@@ -143,7 +117,6 @@
     <button id="btn-settings" aria-label="Einstellungen">⚙</button>
   </header>
   <main id="main">
-
     <!-- Camera -->
     <div id="s-camera" class="screen active">
       <div id="video-wrap">
@@ -162,7 +135,6 @@
         <button class="btn btn-primary" id="btn-pdf-use" style="flex:none;min-height:40px;font-size:0.85rem;padding:0 16px">Seite verwenden</button>
       </div>
     </div>
-
     <!-- Preview -->
     <div id="s-preview" class="screen">
       <img id="preview-img" src="" alt="Vorschau">
@@ -172,7 +144,6 @@
         <button class="btn btn-primary" id="btn-analyze">Analysieren →</button>
       </div>
     </div>
-
     <!-- Processing -->
     <div id="s-processing" class="screen">
       <div class="processing-box">
@@ -181,7 +152,6 @@
         <p class="proc-sub" id="proc-sub">Claude Vision liest das Dokument</p>
       </div>
     </div>
-
     <!-- Review -->
     <div id="s-review" class="screen">
       <div class="review-top">
@@ -194,7 +164,6 @@
         <button class="btn btn-secondary" id="btn-review-retake">↩ Nochmal fotografieren</button>
       </div>
     </div>
-
     <!-- Success -->
     <div id="s-success" class="screen">
       <div class="result-icon" style="background:rgba(46,204,113,0.15);border:2px solid var(--success)">✓</div>
@@ -203,7 +172,6 @@
       <button class="btn btn-primary" id="btn-next" style="max-width:280px;margin-top:8px">Nächstes Dokument</button>
       <button class="btn btn-secondary" id="btn-new-auftrag" style="max-width:280px">＋ Neuer Auftrag</button>
     </div>
-
     <!-- Error -->
     <div id="s-error" class="screen">
       <div class="result-icon" style="background:rgba(231,76,60,0.15);border:2px solid var(--error);margin-top:20px">✕</div>
@@ -214,7 +182,6 @@
         <button class="btn btn-primary" id="btn-err-cam">Neue Aufnahme</button>
       </div>
     </div>
-
     <!-- Camera error -->
     <div id="s-cam-error" class="screen">
       <div class="result-icon" style="font-size:2.2rem;background:rgba(243,156,18,0.15);border:2px solid var(--warn);margin-top:20px">📷</div>
@@ -222,22 +189,19 @@
       <div class="error-box"><p id="cam-err-msg"></p></div>
       <button class="btn btn-primary" id="btn-cam-retry" style="max-width:280px">Erneut versuchen</button>
     </div>
-
     <!-- Settings -->
     <div id="s-settings" class="screen">
       <div class="settings-wrap">
         <p class="settings-title">⚙ Einstellungen</p>
         <p class="settings-sub">API-Keys werden lokal im Browser gespeichert (localStorage) und nie übertragen.</p>
-
         <div class="settings-group">
           <div style="display:flex;align-items:center;justify-content:space-between">
             <span class="settings-label">Cloudflare Worker URL</span>
             <span class="key-status" id="proxy-key-status">–</span>
           </div>
-          <input class="settings-input" id="inp-proxy-url" type="url" placeholder="https://brw-proxy.YOUR-NAME.workers.dev" autocomplete="off" spellcheck="false" style="font-family:inherit;font-size:0.8rem">
+          <input class="settings-input" id="inp-proxy-url" type="url" placeholder="https://brw-garage-proxy.dowuest.workers.dev" autocomplete="off" spellcheck="false" style="font-family:inherit;font-size:0.8rem">
           <p class="settings-hint">Empfohlen – API-Key bleibt server-seitig. Siehe <code>cloudflare-worker.js</code> im Repository.</p>
         </div>
-
         <div class="settings-group" style="border:1px solid rgba(255,255,255,0.07)">
           <div style="display:flex;align-items:center;justify-content:space-between">
             <span class="settings-label">Claude API Key <span style="font-weight:400;text-transform:none;font-size:0.65rem;color:var(--text-muted)">(nur ohne Worker)</span></span>
@@ -246,44 +210,40 @@
           <input class="settings-input" id="inp-claude-key" type="password" placeholder="sk-ant-api03-..." autocomplete="off" spellcheck="false">
           <p class="settings-hint">Nur nötig wenn kein Worker URL gesetzt. Direkte Browser-Calls werden von manchen Browsern per CORS blockiert.</p>
         </div>
-
         <button class="btn btn-success" id="btn-save-settings">Speichern</button>
         <button class="btn btn-secondary" id="btn-settings-back">Zurück zur Kamera</button>
       </div>
     </div>
-
   </main>
 </div>
-
 <div id="offline-banner">⚠ Keine Internetverbindung</div>
 <canvas id="canvas" style="display:none"></canvas>
 <canvas id="pdf-canvas" style="display:none"></canvas>
-
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script>if(window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
 <script src="config.js" onerror="window._noConfig=true"></script>
 <script>
 'use strict';
 
-// ── Config: localStorage takes precedence over config.js ──────────────────────
+// ── Config ────────────────────────────────────────────────────────────────────
 if (window._noConfig || typeof CONFIG === 'undefined') {
   window.CONFIG = { CLAUDE_API_KEY: '', CLAUDE_PROXY_URL: '', WORKER_URL: '' };
 }
-const DEFAULT_WORKER_URL = 'https://brw-garage-proxy.dowuest.workers.dev';
-
 function loadStoredKeys() {
-  const proxy  = localStorage.getItem('brw_proxy_url');
+  const proxy = localStorage.getItem('brw_proxy_url');
   const claude = localStorage.getItem('brw_claude_key');
-  CONFIG.CLAUDE_PROXY_URL = proxy || DEFAULT_WORKER_URL;
+  if (proxy) CONFIG.CLAUDE_PROXY_URL = proxy;
   if (claude) CONFIG.CLAUDE_API_KEY = claude;
-  CONFIG.WORKER_URL = CONFIG.CLAUDE_PROXY_URL.replace(/\/?$/, '');
+  CONFIG.WORKER_URL = CONFIG.CLAUDE_PROXY_URL
+    ? CONFIG.CLAUDE_PROXY_URL.replace(/\/?$/, '')
+    : (CONFIG.WORKER_URL || '');
 }
 function saveKeys() {
-  const proxy  = $('inp-proxy-url').value.trim();
+  const proxy = $('inp-proxy-url').value.trim();
   const claude = $('inp-claude-key').value.trim();
-  if (proxy)  { localStorage.setItem('brw_proxy_url',  proxy);  CONFIG.CLAUDE_PROXY_URL = proxy; }
-  else        { localStorage.removeItem('brw_proxy_url');        CONFIG.CLAUDE_PROXY_URL = ''; }
-  if (claude) { localStorage.setItem('brw_claude_key', claude);  CONFIG.CLAUDE_API_KEY   = claude; }
+  if (proxy) { localStorage.setItem('brw_proxy_url', proxy); CONFIG.CLAUDE_PROXY_URL = proxy; }
+  else { localStorage.removeItem('brw_proxy_url'); CONFIG.CLAUDE_PROXY_URL = ''; }
+  if (claude) { localStorage.setItem('brw_claude_key', claude); CONFIG.CLAUDE_API_KEY = claude; }
   CONFIG.WORKER_URL = CONFIG.CLAUDE_PROXY_URL
     ? CONFIG.CLAUDE_PROXY_URL.replace(/\/?$/, '')
     : (CONFIG.WORKER_URL || '');
@@ -294,28 +254,34 @@ function saveKeys() {
 function updateKeyStatus() {
   const hasP = !!CONFIG.CLAUDE_PROXY_URL;
   const hasC = !!CONFIG.CLAUDE_API_KEY;
-  $('proxy-key-status').textContent  = hasP ? '✓ gesetzt' : '– optional';
-  $('proxy-key-status').className    = 'key-status ' + (hasP ? 'key-ok' : '');
+  $('proxy-key-status').textContent = hasP ? '✓ gesetzt' : '– optional';
+  $('proxy-key-status').className = 'key-status ' + (hasP ? 'key-ok' : '');
   $('claude-key-status').textContent = hasC ? '✓ gesetzt' : (hasP ? '– nicht nötig' : '✕ fehlt');
-  $('claude-key-status').className   = 'key-status ' + (hasC ? 'key-ok' : (hasP ? '' : 'key-missing'));
-  if (hasP && !$('inp-proxy-url').value)  $('inp-proxy-url').placeholder  = '(gespeichert)';
+  $('claude-key-status').className = 'key-status ' + (hasC ? 'key-ok' : (hasP ? '' : 'key-missing'));
+  if (hasP && !$('inp-proxy-url').value) $('inp-proxy-url').placeholder = '(gespeichert)';
   if (hasC && !$('inp-claude-key').value) $('inp-claude-key').placeholder = '(gespeichert)';
 }
 loadStoredKeys();
 
-// ── Constants ─────────────────────────────────────────────────────────────────
+// ── Claude Prompt ─────────────────────────────────────────────────────────────
 const CLAUDE_PROMPT = `Du bist ein Datenextraktions-Assistent für eine Autowerkstatt in der Schweiz. Analysiere dieses Foto eines Garage-Dokuments.
 
 Bestimme zuerst den Dokumenttyp:
+
 - einlagerungsschein: Grauer Balken mit Einlagerungs-Nr., Felder für Profiltiefe VL/VR/HL/HR, Checkboxen für Radart und Pneuart
+
 - werkstatt_auftrag: 'Werkstatt - Auftrag' als Titel oben, Fahrzeug-Datentabelle, Feld Km neu handschriftlich, Barcode oben rechts
+
 - servicelaufblatt: Zwei Checklisten-Tabellen mit Codes wie PR1/WS1/PW1, keine Kundendaten sichtbar
+
 - lieferschein: "Lieferschein" als Titel, Lieferant oben links (z.B. "hostettler autotechnik ag"), Tabelle mit Artikel-Nr/Beschreibung/Bestellt/Geliefert/Preis
 
 WICHTIG: Antworte NUR mit rohem validem JSON. Keine verschachtelten Objekte — alle Felder FLACH direkt in "felder". Exakte Feldnamen wie unten angegeben verwenden.
 
 === EINLAGERUNGSSCHEIN ===
+
 Extrahiere diese exakten Feldnamen flach in "felder":
+
 einlagerungs_nr, datum_eroffnet, annehmer, auftrag_nr, annahme_datum, termin_datum,
 kunde_name, kunde_adresse, kunde_ort, kunde_mobil,
 fahrzeug_bezeichnung, kennschild, chassisnr, erst_inverkehrssetzung,
@@ -360,104 +326,77 @@ Beispiel:
 }
 
 === WERKSTATT_AUFTRAG ===
-Extrahiere diese exakten Feldnamen flach in "felder":
-auftrag_nr, annahme_datum, annahme_uhrzeit, termin_datum, annehmer, mechaniker,
-kunde_name, kunde_adresse, kunde_ort, kunde_mobil,
-fahrzeug, kennschild, chassisnr, km_alt, km_neu,
+
+Extrahiere NUR diese exakten Feldnamen flach in "felder":
+
+auftrag_nr, kunde_name, fahrzeug, kennschild, km_neu,
+
 arbeiten (JSON-Array: [{"beschreibung":"...","stunden":0.0,"erledigt":true}]),
+
 notizen (JSON-Array: ["handschriftliche Notiz 1", "..."]),
-hervorgehoben (JSON-Array: ["gelb markierter Text"]),
-verbrauchsmaterial (JSON-Array: ["Artikel 1"]),
+
 zeitverrechnung (Array via Rechnungsschlüssel)
 
-Wichtig: ALLE handschriftlichen Texte unterhalb der gedruckten Tabelle vollständig in "notizen". Gelb markierte Texte in "hervorgehoben". Bei unlesbaren Zahlen: 99999.
+NICHT extrahieren (weglassen): annahme_datum, annahme_uhrzeit, termin_datum, annehmer,
+mechaniker, kunde_adresse, kunde_ort, kunde_mobil, chassisnr, km_alt, hervorgehoben, verbrauchsmaterial.
+
+Wichtig: ALLE handschriftlichen Texte unterhalb der gedruckten Tabelle vollständig in "notizen".
+Bei unlesbaren Zahlen: 99999.
 
 === SERVICELAUFBLATT ===
 
-Das Dokument hat ZWEI Teile:
-- OBEN: Materialliste (gedruckte Codes links, handschriftliche Menge daneben)
-- UNTEN: Checkliste mit Codes wie PR1, WS2, PW1 — angekreuzt oder leer
+Das Dokument hat ZWEI Teile: oben Materialliste mit Mengen (OBERE TABELLE), unten Checkboxen-Tabelle (UNTERE TABELLE).
 
-WICHTIG: Antworte NUR mit rohem validem JSON. Alle Felder FLACH in "felder".
+Extrahiere alle Felder FLACH direkt in "felder" mit dem exakten Code als Feldname.
 
-Extrahiere JEDEN Code als eigenes Feld:
+OBERE TABELLE — Materialien und Teile:
+Codes: MAT_2, MAT_3, MAT_4, MAT_5, MAT_9, MAT_12, MAT_13, MAT_16, MAT_17, MAT_18, MAT_19, MAT_20, MAT_21, MAT_22, MAT_24, MAT_25, MAT_134, MAT_1234, MAT_AD, MAT_ZD, MAT_Z, UNT, SK, SA, M4, M5, M6, M8, M10, M12, NIET, SCHR, IMB, KB, KUN, BRI, SI, SIM, LOT, ELA, GL1, GL2, GL3, GL4, GL5, GL6, GL7, GL8, GL9, GL10, GL11, GL12, GL13, GL14, GL15, GL16, GL17, GL18, GL19, GL20, GL21, GL22, GL23, GL24, VIG
+Regel: Nur wenn eine Zahl handschriftlich eingetragen ist → schreibe die Zahl (integer). Kein Eintrag → Feld WEGLASSEN.
+MAT_ZD, MAT_Z, VIG sind Checkboxen: true wenn angekreuzt, sonst WEGLASSEN.
 
-NUMBER-Felder (handschriftliche Menge eintragen, 0 wenn nicht vorhanden):
-MAT_2 (Motoröl 5W30 Liter), MAT_3 (Motoröl 5W30 DPF), MAT_4 (Motoröl 0W20),
-MAT_5 (Automatenöl ATF), MAT_9 (Getriebeöl GL4/5), MAT_12 (Bremsflüssigkeit DOT4),
-MAT_13 (Scheibenwischwasser), MAT_16 (Motorreiniger), MAT_17 (Klimadesinfektion),
-MAT_18 (Frostschutz blau), MAT_19 (Frostschutz grün), MAT_20 (Frostschutz rot),
-MAT_21 (Frostschutz FL22 grün), MAT_22 (Frostschutz FL22 rot),
-MAT_24 (Kraftstoffzusatz), MAT_25 (Haldexöl/4x4 VAG),
-MAT_134 (Freon R-134 pro 100gr), MAT_1234 (Freon R-1234yf pro 1gr),
-MAT_AD (AdBlue Liter),
-UNT (Unterbodenschutz), SK (Scheibenkleber), SA (Scheibenaktivator),
-M4, M5, M6, M8, M10, M12 (Schrauben/Muttern Anzahl),
-NIET (Niete), SCHR (Blechschraube), IMB (Imussschraube), KB (Kabelband),
-KUN (Kunststoffverbinder), BRI (Schlauchbride),
-SI (Sicherung Normal), SIM (Sicherung Mini), LOT (Lötverbinder), ELA (Elektroverbinder),
-GL1 (H1), GL2 (H3), GL3 (H4), GL4 (H7), GL5 (H11),
-GL6 (Glassockel 12V5W), GL7 (12V3W), GL8 (12V1.2W), GL9 (12V5W orange),
-GL10 (12V21W), GL11 (12V21/5W), GL12 (12V21W oran.), GL13 (12/16W),
-GL14 (Glühbirne 12V5W), GL15 (12V10W), GL16 (12V21W), GL17 (12V21W oran.),
-GL18 (12V21/5W), GL19 (HB3), GL20 (HB4), GL21 (H8), GL22 (H9), GL23 (H15), GL24 (HIR2),
-PR2 (Motor/Chassisreinigung h), PR6 (Unterbodenschutz malen h), PR7 (Fahrzeug prüfen h),
-WS1 (Fz reinigen Anzahl), WS5 (Fehlerspeicher Anzahl),
-PW1 (Radwechsel -16 Anzahl), PW2 (Radwechsel 17+ Anzahl),
-PW3 (Reifenwechsel -16), PW4 (Reifenwechsel 17+),
-PW5 (Auswuchten Stahl), PW6 (Auswuchten Alu), PW7 (Rad einlagern),
-PW8 (Reifen entsorgen), PW9 (Reifen reparieren), PW10 (Radwäsche),
-PW16 (Rad de/montieren -16), PW17 (Rad de/montieren 17+)
+UNTERE TABELLE — Checkliste:
+PR-Felder (alle Checkbox, true/weglassen): PR1, PR2, PR3, PR4, PR5, PR6, PR7
 
-CHECKBOX-Felder (true wenn angekreuzt/abgehakt, false wenn leer):
-MAT_ZD (Ölzapfendichtung), MAT_Z (Ölzapfen), VIG (Vignette),
-PR1 (Fahrzeug Prüfbereitstellen), PR3 (Licht einstellen),
-PR4 (Bremsprüfstand), PR5 (Abgassystem kontrollieren),
-WS2 (Niveaukontrolle), WS3 (Reifendruck kontrollieren),
-WS4 (Beleuchtung kontrollieren), WS6 (Servicerückstellung Tester),
-WS6O (Servicerückstellung ohne Tester), WS7 (Fz reinigen Auftrag Kunde),
-WS8 (Fz polieren/reinigen), WS9 (Fz polieren/versiegeln),
-AEC (Energiecheck ausgeführt), RD (Reifendrucksensor programmiert),
-ABG1 (Abgas Benzin), ABG2 (Abgas Diesel), PAR (Partikelmessung),
-KLIM134 (Klimaservice R-134), KLIM1234 (Klimaservice R1234yf),
-KLIMD (Klima desinfizieren), C (Winter/Frühling/Feriencheck),
-DS (Datenschutz beigelegt)
+WS-Felder (alle Checkbox, true/weglassen): WS1, WS2, WS3, WS4, WS5, WS6, WS6O, WS7, WS8, WS9, AEC
 
-Beispiel-Antwort:
+PW-Felder (alle Number, Zahl/weglassen): PW1, PW2, PW3, PW4, PW5, PW6, PW7, PW8, PW9, PW10, PW16, PW17
+
+Rest (alle Checkbox, true/weglassen): RD, ABG1, ABG2, PAR, KLIM134, KLIM1234, KLIMD, C, DS
+
+BEISPIEL-OUTPUT:
 {
   "dokumenttyp": "servicelaufblatt",
   "felder": {
-    "MAT_2": 4.7,
-    "MAT_13": 0.5,
+    "MAT_2": 4,
+    "MAT_13": 1,
     "MAT_ZD": true,
-    "MAT_Z": false,
     "PR1": true,
+    "PR2": true,
     "WS2": true,
-    "WS3": true,
-    "WS6": true,
-    "PW2": 4,
-    "PW6": 4,
+    "WS5": true,
+    "PW2": 2,
+    "RD": true,
+    "ABG1": true,
     "DS": true
   },
-  "confidence": 0.88,
-  "unsichere_felder": ["MAT_2"]
+  "confidence": 0.92,
+  "unsichere_felder": []
 }
 
-REGELN:
-- Number-Felder: Zahl aus Handschrift übertragen. 0 wenn kein Eintrag.
-- Checkbox-Felder: true wenn Häkchen/Kreuz sichtbar, false wenn leer.
-- Felder mit 0 oder false KÖNNEN weggelassen werden.
-- KEINE Arrays, KEINE verschachtelten Objekte.
-- NUR Felder aus den obigen Listen.
+VERBOTEN: Arrays, verschachtelte Objekte, Codes die nicht oben gelistet sind.
+NUR flache Key-Value Paare. Felder ohne Inhalt WEGLASSEN (nicht null, nicht 0, nicht false).
 
 === LIEFERSCHEIN ===
+
 Extrahiere diese exakten Feldnamen flach in "felder":
+
 lieferschein_nr, datum, lieferant, kundennummer, lieferart, tourencode,
 notizen (Freitext-Hinweise oben als String),
 anzahl_positionen (Zahl),
 positionen (JSON-Array: [{"artikel_nr":"...","beschreibung":"...","bestellt":0,"geliefert":0,"me":"Stk.","preis_inkl":0.0,"basispreis":0.0,"retour":false,"notiz":""}])
 
-=== RECHNUNGSSCHLÜSSEL (für werkstatt_auftrag und servicelaufblatt) ===
+=== RECHNUNGSSCHLÜSSEL (für werkstatt_auftrag) ===
+
 Servicezeiten Verrechnung:
 - Mazda 1.Service → 1.6h
 - Mazda 2.Service → 2.6h
@@ -488,7 +427,9 @@ Matche alle erkannten Arbeiten mit Fuzzy-Matching gegen den Rechnungsschlüssel.
 
 Antworte NUR mit rohem validem JSON ohne Markdown-Backticks.`;
 
+// ── Field Labels ──────────────────────────────────────────────────────────────
 const FIELD_LABELS = {
+  // Einlagerungsschein
   einlagerungs_nr:'Einlagerungs-Nr.', datum_eroffnet:'Datum eröffnet', annehmer:'Annehmer',
   auftrag_nr:'Auftrags-Nr.', annahme_datum:'Annahmedatum', termin_datum:'Termin',
   kunde_name:'Kundenname', kunde_adresse:'Adresse', kunde_ort:'Ort', kunde_mobil:'Mobil',
@@ -497,55 +438,53 @@ const FIELD_LABELS = {
   reifendimension:'Reifendimension', profiltiefe_VL:'Profiltiefe VL (mm)',
   profiltiefe_VR:'Profiltiefe VR (mm)', profiltiefe_HL:'Profiltiefe HL (mm)',
   profiltiefe_HR:'Profiltiefe HR (mm)', radart:'Radart', pneuart:'Pneuart',
-  alter_lagerort:'Alter Lagerort', bemerkungen:'Bemerkungen', fahrzeug:'Fahrzeug',
-  km_alt:'Km alt', km_neu:'Km neu', mechaniker:'Mechaniker', annahme_uhrzeit:'Annahmezeit',
-  arbeiten:'Arbeiten', notizen:'Notizen', hervorgehoben:'Hervorgehoben',
-  reifenetikett:'Reifenetikett', verbrauchsmaterial:'Verbrauchsmaterial',
+  alter_lagerort:'Alter Lagerort', bemerkungen:'Bemerkungen',
+  // Werkstatt-Auftrag
+  fahrzeug:'Fahrzeug', km_neu:'Km neu', arbeiten:'Arbeiten', notizen:'Notizen',
+  // Lieferschein
   lieferschein_nr:'Lieferschein-Nr.', datum:'Datum', lieferant:'Lieferant',
   kundennummer:'Kundennummer', lieferart:'Lieferart', tourencode:'Tourencode',
   positionen:'Positionen', anzahl_positionen:'Anzahl Positionen',
-  MAT_ZD:'Ölzapfendichtung', MAT_Z:'Ölzapfen',
-  MAT_2:'Motoröl 5W30 (L)', MAT_3:'Motoröl 5W30 DPF (L)', MAT_4:'Motoröl 0W20 (L)',
-  MAT_5:'Automatenöl ATF (L)', MAT_9:'Getriebeöl GL4/5 (L)',
-  MAT_12:'Bremsflüssigkeit DOT4 (L)', MAT_13:'Scheibenwischwasser (L)',
-  MAT_16:'Motorreiniger', MAT_17:'Klimadesinfektion',
-  MAT_18:'Frostschutz blau (L)', MAT_19:'Frostschutz grün (L)',
-  MAT_20:'Frostschutz rot (L)', MAT_21:'Frostschutz FL22 grün (L)',
-  MAT_22:'Frostschutz FL22 rot (L)', MAT_24:'Kraftstoffzusatz',
-  MAT_25:'Haldexöl / 4x4 VAG (L)', MAT_134:'Freon R-134 (pro 100gr)',
-  MAT_1234:'Freon R-1234yf (pro 1gr)', MAT_AD:'AdBlue (L)',
+  // Servicelaufblatt — Materialien
+  MAT_2:'Motoröl 5W30', MAT_3:'Motoröl 5W30 DPF', MAT_4:'Motoröl 0W20',
+  MAT_5:'Automatenöl ATF', MAT_9:'Getriebeöl GL4/5', MAT_12:'Bremsflüssigkeit DOT4',
+  MAT_13:'Scheibenwischwasser', MAT_16:'Motorreiniger', MAT_17:'Klimadesinfektion',
+  MAT_18:'Frostschutz blau', MAT_19:'Frostschutz grün', MAT_20:'Frostschutz rot',
+  MAT_21:'Frostschutz FL22 grün', MAT_22:'Frostschutz FL22 rot', MAT_24:'Kraftstoffzusatz',
+  MAT_25:'Haldexöl / 4x4 VAG', MAT_134:'Freon R-134 pro 100gr', MAT_1234:'Freon R-1234yf pro 1gr',
+  MAT_AD:'AdBlue pro Liter', MAT_ZD:'Ölzapfendichtung', MAT_Z:'Ölzapfen',
   UNT:'Unterbodenschutz', SK:'Scheibenkleber', SA:'Scheibenaktivator',
   M4:'Schraube/Mutter M4', M5:'Schraube/Mutter M5', M6:'Schraube/Mutter M6',
   M8:'Schraube/Mutter M8', M10:'Schraube/Mutter M10', M12:'Schraube/Mutter M12',
   NIET:'Niete', SCHR:'Kombi/Blechschraube', IMB:'Imussschraube',
   KB:'Kabelband', KUN:'Kunststoffverbinder', BRI:'Schlauchbride',
   SI:'Sicherung Normal', SIM:'Sicherung Mini/Flach', LOT:'Lötverbinder', ELA:'Elektroverbinder',
-  VIG:'Vignette',
   GL1:'H1', GL2:'H3', GL3:'H4', GL4:'H7', GL5:'H11',
   GL6:'Glassockel 12V5W', GL7:'Glassockel 12V3W', GL8:'Glassockel 12V1,2W',
   GL9:'Glassockel 12V5W orange', GL10:'Glassockel 12V21W', GL11:'Glassockel 12V21/5W',
-  GL12:'Glassockel 12V21W oran.', GL13:'Glassockel 12/16W',
-  GL14:'Glühbirne 12V5W', GL15:'Glühbirne 12V10W', GL16:'Glühbirne 12V21W',
-  GL17:'Glühbirne 12V21W oran.', GL18:'Glühbirne 12V21/5W',
-  GL19:'HB3', GL20:'HB4', GL21:'H8', GL22:'H9', GL23:'H15', GL24:'HIR2',
-  PR1:'Fahrzeug Prüfbereitstellen', PR2:'Motor/Chassisreinigung',
-  PR3:'Licht einstellen', PR4:'Bremsprüfstand', PR5:'Abgassystem kontrollieren',
-  PR6:'Unterbodenschutz malen', PR7:'Fahrzeug prüfen',
-  WS1:'Fahrzeug reinigen Rep/Ser', WS2:'Niveaukontrolle',
-  WS3:'Reifendruck kontrollieren', WS4:'Beleuchtung kontrollieren',
-  WS5:'Fehlerspeicher ausl+lösch', WS6:'Servicerückstellung Tester',
+  GL12:'Glassockel 12V21W oran.', GL13:'Glassockel 12/16W', GL14:'Glühbirne 12V5W',
+  GL15:'Glühbirne 12V10W', GL16:'Glühbirne 12V21W', GL17:'Glühbirne 12V21W oran.',
+  GL18:'Glühbirne 12V21/5W', GL19:'HB3', GL20:'HB4', GL21:'H8',
+  GL22:'H9', GL23:'H15', GL24:'HIR2', VIG:'Vignette',
+  // Servicelaufblatt — Prüfungen
+  PR1:'Fahrzeug Prüfbereitstellen', PR2:'Motor/Chassisreinigung', PR3:'Licht einstellen',
+  PR4:'Bremsprüfstand', PR5:'Abgassystem kontrollieren', PR6:'Unterbodenschutz malen', PR7:'Fahrzeug prüfen',
+  // Servicelaufblatt — Werkstatt
+  WS1:'Fahrzeug reinigen Rep/Ser', WS2:'Niveaukontrolle', WS3:'Reifendruck kontrollieren',
+  WS4:'Beleuchtung kontrollieren', WS5:'Fehlerspeicher ausl+lösch', WS6:'Servicerückstellung Tester',
   WS6O:'Servicerückstellung ohne Tester', WS7:'Fz reinigen Auftrag Kunde',
-  WS8:'Fz polieren/reinigen', WS9:'Fz polieren/versiegeln/rei',
-  AEC:'Energiecheck ausgeführt',
+  WS8:'Fz polieren/reinigen', WS9:'Fz polieren/versiegeln/rei', AEC:'Energiecheck ausgeführt',
+  // Servicelaufblatt — Räder
   PW1:'Radwechsel bis 16 Zoll', PW2:'Radwechsel ab 17 Zoll',
   PW3:'Reifenwechsel bis 16 Zoll', PW4:'Reifenwechsel ab 17 Zoll',
   PW5:'Rad auswuchten Stahl', PW6:'Rad auswuchten Alu',
   PW7:'Rad einlagern', PW8:'Reifen entsorgen', PW9:'Reifen reparieren',
-  PW10:'Radwäsche', PW16:'Rad de/montieren -16', PW17:'Rad de/montieren 17+',
-  RD:'Reifendrucksensor programmiert',
+  PW10:'Radwäsche', PW16:'Rad de und montieren -16', PW17:'Rad de und montieren 17-',
+  RD:'Reifendrucksensor programm',
+  // Servicelaufblatt — Abgas/Klima
   ABG1:'Abgas Benzin', ABG2:'Abgas Diesel', PAR:'Partikelmessung',
-  KLIM134:'Klimaservice R-134', KLIM1234:'Klimaservice R1234yf',
-  KLIMD:'Klima desinfizieren', C:'Winter/Frühling/Feriencheck', DS:'Datenschutz beigelegt'
+  KLIM134:'Klimaservice R-134', KLIM1234:'Klimaservice R1234yf', KLIMD:'Klima desinfizieren',
+  C:'Winter/Frühling/Feriencheck', DS:'Datenschutz beigelegt',
 };
 
 const DOCTYPE_LABELS = {
@@ -555,16 +494,19 @@ const DOCTYPE_LABELS = {
   lieferschein:'Lieferschein'
 };
 
+// PATCH 6: Supabase Tabellennamen (lowercase)
 const TABLE_MAP = {
-  einlagerungsschein:'Einlagerungsscheine',
-  werkstatt_auftrag:'Werkstatt_Auftraege',
-  servicelaufblatt:'Servicelaufblaetter',
-  lieferschein:'Lieferscheine'
+  einlagerungsschein:'einlagerungsscheine',
+  werkstatt_auftrag:'werkstatt_auftraege',
+  servicelaufblatt:'servicelaufblaetter',
+  lieferschein:'lieferscheine'
 };
 
+// PATCH 4: NUMBER_FIELDS aktualisiert mit allen Servicelaufblatt-Number-Feldern
 const NUMBER_FIELDS = new Set([
   'profiltiefe_VL','profiltiefe_VR','profiltiefe_HL','profiltiefe_HR',
   'confidence','zeit_total','zeit_verrechnung_h','anzahl_positionen',
+  // Servicelaufblatt Number-Felder — Materialien
   'MAT_2','MAT_3','MAT_4','MAT_5','MAT_9','MAT_12','MAT_13','MAT_16','MAT_17',
   'MAT_18','MAT_19','MAT_20','MAT_21','MAT_22','MAT_24','MAT_25',
   'MAT_134','MAT_1234','MAT_AD',
@@ -573,17 +515,19 @@ const NUMBER_FIELDS = new Set([
   'GL1','GL2','GL3','GL4','GL5','GL6','GL7','GL8','GL9','GL10',
   'GL11','GL12','GL13','GL14','GL15','GL16','GL17','GL18','GL19',
   'GL20','GL21','GL22','GL23','GL24',
-  'PR2','PR6','PR7','WS1','WS5',
+  // Servicelaufblatt Number-Felder — Räder (alle PW sind Number)
   'PW1','PW2','PW3','PW4','PW5','PW6','PW7','PW8','PW9','PW10','PW16','PW17'
+  // PR und WS sind alle boolean → nicht in NUMBER_FIELDS
 ]);
 
-const CHECKBOX_FIELDS = new Set([
-  'MAT_ZD','MAT_Z','VIG',
-  'PR1','PR3','PR4','PR5',
-  'WS2','WS3','WS4','WS6','WS6O','WS7','WS8','WS9','AEC',
-  'RD','ABG1','ABG2','PAR','KLIM134','KLIM1234','KLIMD','C','DS'
+// PATCH 4: ARRAY_FIELDS bereinigt (hervorgehoben + verbrauchsmaterial entfernt)
+const ARRAY_FIELDS = new Set(['arbeiten','notizen','reifenetikett','zeitverrechnung','positionen']);
+
+// Felder die NIE gespeichert werden (Werkstatt-Auftrag Bereinigung)
+const NEVER_SAVE_FIELDS = new Set([
+  'annahme_datum','annahme_uhrzeit','termin_datum','annehmer','mechaniker',
+  'kunde_adresse','kunde_ort','kunde_mobil','chassisnr','km_alt','hervorgehoben','verbrauchsmaterial'
 ]);
-const ARRAY_FIELDS  = new Set(['arbeiten','notizen','hervorgehoben','reifenetikett','verbrauchsmaterial','zeitverrechnung','positionen']);
 
 // ── State ─────────────────────────────────────────────────────────────────────
 let stream = null;
@@ -592,14 +536,13 @@ let lastResult = null;
 let retryFn = null;
 let pdfDoc = null;
 let pdfPage = 1;
-let sessionAuftragNr = null; // persists across scans within one Auftrag
+let sessionAuftragNr = null;
 
 // ── DOM helpers ───────────────────────────────────────────────────────────────
 const $ = id => document.getElementById(id);
-const video     = $('video');
-const canvas    = $('canvas');
+const video = $('video');
+const canvas = $('canvas');
 const pdfCanvas = $('pdf-canvas');
-
 const SCREEN_IDS = ['s-camera','s-preview','s-processing','s-review','s-success','s-error','s-cam-error','s-settings'];
 function show(id) {
   SCREEN_IDS.forEach(s => $(s).classList.remove('active'));
@@ -631,16 +574,14 @@ async function startCamera() {
 
 // ── Capture & compress ────────────────────────────────────────────────────────
 function b64Bytes(b64) { return Math.round(b64.length * 0.75); }
-
 function drawFrame(maxPx, quality) {
   const w = video.videoWidth || 1280, h = video.videoHeight || 720;
   const scale = Math.min(1, maxPx / Math.max(w, h));
-  canvas.width  = Math.round(w * scale);
+  canvas.width = Math.round(w * scale);
   canvas.height = Math.round(h * scale);
   canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
   return canvas.toDataURL('image/jpeg', quality);
 }
-
 function captureAndCompress() {
   const prefix = 'data:image/jpeg;base64,';
   let dataUrl = drawFrame(1200, 0.65);
@@ -657,7 +598,7 @@ function compressFromCanvas(srcCanvas) {
   const prefix = 'data:image/jpeg;base64,';
   const draw = (maxPx, q) => {
     const s = Math.min(1, maxPx / Math.max(srcCanvas.width, srcCanvas.height));
-    canvas.width  = Math.round(srcCanvas.width  * s);
+    canvas.width = Math.round(srcCanvas.width * s);
     canvas.height = Math.round(srcCanvas.height * s);
     canvas.getContext('2d').drawImage(srcCanvas, 0, 0, canvas.width, canvas.height);
     return canvas.toDataURL('image/jpeg', q);
@@ -670,23 +611,20 @@ function compressFromCanvas(srcCanvas) {
   $('size-info').textContent = `Bildgrösse: ${Math.round(b64Bytes(compressedBase64) / 1024)} KB`;
   show('s-preview');
 }
-
 async function renderPdfPage(pageNum) {
   const page = await pdfDoc.getPage(pageNum);
-  const vp   = page.getViewport({ scale: 2 });
-  pdfCanvas.width  = vp.width;
+  const vp = page.getViewport({ scale: 2 });
+  pdfCanvas.width = vp.width;
   pdfCanvas.height = vp.height;
   await page.render({ canvasContext: pdfCanvas.getContext('2d'), viewport: vp }).promise;
   $('pdf-page-info').textContent = `Seite ${pageNum} von ${pdfDoc.numPages}`;
   $('btn-pdf-prev').disabled = pageNum <= 1;
   $('btn-pdf-next').disabled = pageNum >= pdfDoc.numPages;
 }
-
 async function handleFile(file) {
   if (!file) return;
   $('pdf-page-selector').classList.remove('visible');
   pdfDoc = null;
-
   if (file.type === 'application/pdf') {
     const arrayBuffer = await file.arrayBuffer();
     pdfDoc = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
@@ -695,7 +633,6 @@ async function handleFile(file) {
     if (pdfDoc.numPages > 1) $('pdf-page-selector').classList.add('visible');
     else compressFromCanvas(pdfCanvas);
   } else {
-    // Image file — compress directly from img element to avoid self-draw bug
     const reader = new FileReader();
     reader.onload = e => {
       const img = new Image();
@@ -703,14 +640,14 @@ async function handleFile(file) {
         const prefix = 'data:image/jpeg;base64,';
         const draw = (maxPx, q) => {
           const s = Math.min(1, maxPx / Math.max(img.naturalWidth, img.naturalHeight));
-          canvas.width  = Math.round(img.naturalWidth  * s);
+          canvas.width = Math.round(img.naturalWidth * s);
           canvas.height = Math.round(img.naturalHeight * s);
           canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
           return canvas.toDataURL('image/jpeg', q);
         };
         let dataUrl = draw(1200, 0.65);
         if (b64Bytes(dataUrl.slice(prefix.length)) > 900_000) dataUrl = draw(1200, 0.5);
-        if (b64Bytes(dataUrl.slice(prefix.length)) > 900_000) dataUrl = draw(900,  0.5);
+        if (b64Bytes(dataUrl.slice(prefix.length)) > 900_000) dataUrl = draw(900, 0.5);
         compressedBase64 = dataUrl.slice(prefix.length);
         $('preview-img').src = dataUrl;
         $('size-info').textContent = `Bildgrösse: ${Math.round(b64Bytes(compressedBase64) / 1024)} KB`;
@@ -729,11 +666,9 @@ async function analyzeWithClaude() {
     showError('Konfiguration fehlt', 'Bitte in den Einstellungen (⚙) entweder die Worker URL oder den Claude API-Key eintragen.');
     return;
   }
-
   show('s-processing');
   $('proc-title').textContent = 'Wird analysiert…';
   $('proc-sub').textContent = 'Claude Vision liest das Dokument aus';
-
   const requestBody = {
     model: 'claude-opus-4-5',
     max_tokens: 2000,
@@ -745,14 +680,10 @@ async function analyzeWithClaude() {
       ]
     }]
   };
-
-  // Via Cloudflare Worker proxy (recommended — avoids CORS)
-  // or direct if no proxy configured
   const endpoint = useProxy ? CONFIG.CLAUDE_PROXY_URL : 'https://api.anthropic.com/v1/messages';
   const headers = useProxy
     ? { 'content-type': 'application/json' }
     : { 'content-type': 'application/json', 'x-api-key': CONFIG.CLAUDE_API_KEY, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-calls': 'true' };
-
   let rawText;
   try {
     const res = await fetch(endpoint, { method: 'POST', mode: 'cors', headers, body: JSON.stringify(requestBody) });
@@ -770,7 +701,6 @@ async function analyzeWithClaude() {
     showError('Claude API Fehler', msg);
     return;
   }
-
   let parsed;
   try {
     const clean = rawText.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
@@ -780,17 +710,13 @@ async function analyzeWithClaude() {
     showError('Ungültige Antwort', 'Claude hat kein gültiges JSON zurückgegeben:\n\n' + rawText);
     return;
   }
-
   lastResult = parsed;
   buildReview(parsed);
 }
 
-// ── Field render helpers ───────────────────────────────────────────────────────
+// ── Field render helpers ──────────────────────────────────────────────────────
 function renderField(keyPath, label, val, isUncertain) {
-  if (val === 'true') val = true;
-  if (val === 'false') val = false;
   if (val === null || val === undefined) val = '';
-
   if (typeof val === 'boolean') {
     const row = document.createElement('div');
     row.className = 'field-row';
@@ -800,14 +726,13 @@ function renderField(keyPath, label, val, isUncertain) {
     </label>`;
     return [row];
   }
-
   if (Array.isArray(val)) {
     const rows = [];
     if (val.length === 0) return rows;
     val.forEach((item, i) => {
       if (item !== null && typeof item === 'object') {
         Object.entries(item).forEach(([subKey, subVal]) => {
-          rows.push(...renderField(`${keyPath}.${i}.${subKey}`, `${escHtml(label)} [${i + 1}] – ${escHtml(FIELD_LABELS[subKey] || subKey)}`, subVal, false));
+          rows.push(...renderField(`${keyPath}.${i}.${subKey}`, `${label} [${i + 1}] – ${FIELD_LABELS[subKey] || subKey}`, subVal, false));
         });
       } else {
         const strVal = item === null || item === undefined ? '' : String(item);
@@ -820,15 +745,13 @@ function renderField(keyPath, label, val, isUncertain) {
     });
     return rows;
   }
-
   if (typeof val === 'object') {
     const rows = [];
     Object.entries(val).forEach(([subKey, subVal]) => {
-      rows.push(...renderField(`${keyPath}.${subKey}`, `${escHtml(label)} – ${escHtml(FIELD_LABELS[subKey] || subKey)}`, subVal, false));
+      rows.push(...renderField(`${keyPath}.${subKey}`, `${label} – ${FIELD_LABELS[subKey] || subKey}`, subVal, false));
     });
     return rows;
   }
-
   const strVal = String(val);
   const row = document.createElement('div');
   row.className = 'field-row';
@@ -862,7 +785,6 @@ function buildReview(parsed) {
   const { dokumenttyp, felder = {}, confidence = 0, unsichere_felder = [] } = parsed;
   const uncertain = new Set((unsichere_felder || []).map(f => String(f).toLowerCase()));
 
-  // Badges
   $('doctype-label').textContent = DOCTYPE_LABELS[dokumenttyp] || dokumenttyp;
   const cb = $('conf-badge');
   const pct = Math.round((confidence || 0) * 100);
@@ -883,48 +805,24 @@ function buildReview(parsed) {
     sessionBanner.innerHTML = `<span style="color:var(--warn)">⚠ Kein aktiver Auftrag — zuerst Werkstatt-Auftrag scannen</span>`;
   }
 
-  // Build field groups
   const wrap = $('fields-wrap');
   wrap.innerHTML = '';
   wrap.parentElement.insertBefore(sessionBanner, wrap);
 
-  if (dokumenttyp === 'servicelaufblatt') {
-    const SL_GROUPS = [
-      { title: '🔧 Prüfungen', keys: ['PR1','PR2','PR3','PR4','PR5','PR6','PR7'] },
-      { title: '🏭 Werkstatt', keys: ['WS1','WS2','WS3','WS4','WS5','WS6','WS6O','WS7','WS8','WS9','AEC'] },
-      { title: '🔵 Räder', keys: ['PW1','PW2','PW3','PW4','PW5','PW6','PW7','PW8','PW9','PW10','PW16','PW17','RD'] },
-      { title: '💨 Abgas / Klima', keys: ['ABG1','ABG2','PAR','KLIM134','KLIM1234','KLIMD','C','DS'] },
-      { title: '🛢 Materialien', keys: ['MAT_2','MAT_3','MAT_4','MAT_5','MAT_9','MAT_12','MAT_13','MAT_16','MAT_17','MAT_18','MAT_19','MAT_20','MAT_21','MAT_22','MAT_24','MAT_25','MAT_134','MAT_1234','MAT_AD','MAT_ZD','MAT_Z'] },
-      { title: '💡 Glühbirnen', keys: ['VIG','GL1','GL2','GL3','GL4','GL5','GL6','GL7','GL8','GL9','GL10','GL11','GL12','GL13','GL14','GL15','GL16','GL17','GL18','GL19','GL20','GL21','GL22','GL23','GL24'] },
-      { title: '🔩 Teile', keys: ['UNT','SK','SA','M4','M5','M6','M8','M10','M12','NIET','SCHR','IMB','KB','KUN','BRI','SI','SIM','LOT','ELA'] },
-    ];
+  // Felder rendern — NEVER_SAVE_FIELDS auch in der Anzeige ausblenden
+  const grp = makeGroup('Extrahierte Felder');
+  let hasFields = false;
+  Object.entries(felder).forEach(([key, val]) => {
+    if (key === 'unsichere_felder' || key === 'zeitverrechnung') return;
+    if (NEVER_SAVE_FIELDS.has(key)) return; // nicht anzeigen
+    const isUncertain = uncertain.has(key.toLowerCase());
+    const label = FIELD_LABELS[key] || key;
+    renderField(key, label, val, isUncertain).forEach(r => grp.appendChild(r));
+    hasFields = true;
+  });
+  if (hasFields) wrap.appendChild(grp);
 
-    SL_GROUPS.forEach(({ title, keys }) => {
-      const grp = makeGroup(title);
-      keys.forEach(key => {
-        const val = felder.hasOwnProperty(key) ? felder[key] : (CHECKBOX_FIELDS.has(key) ? false : 0);
-        const isUncertain = uncertain.has(key.toLowerCase());
-        const label = FIELD_LABELS[key] || key;
-        renderField(key, label, val, isUncertain).forEach(r => grp.appendChild(r));
-      });
-      wrap.appendChild(grp);
-    });
-
-  } else {
-    // All fields via renderField (handles primitives, booleans, arrays, objects)
-    const grp = makeGroup('Extrahierte Felder');
-    let hasFields = false;
-    Object.entries(felder).forEach(([key, val]) => {
-      if (key === 'unsichere_felder' || key === 'zeitverrechnung') return;
-      const isUncertain = uncertain.has(key.toLowerCase());
-      const label = FIELD_LABELS[key] || key;
-      renderField(key, label, val, isUncertain).forEach(r => grp.appendChild(r));
-      hasFields = true;
-    });
-    if (hasFields) wrap.appendChild(grp);
-  }
-
-  // Zeitverrechnung section
+  // Zeitverrechnung (nur für werkstatt_auftrag)
   const zv = parsed.zeitverrechnung;
   if (Array.isArray(zv) && zv.length > 0) {
     const grp = makeGroup('📋 Zeitverrechnung');
@@ -939,8 +837,6 @@ function buildReview(parsed) {
         <span style="font-size:0.7rem;color:var(--text-muted);white-space:nowrap">${escHtml(item.quelle || '')}</span>`;
       grp.appendChild(row);
     });
-
-    // Total row
     const totalRow = document.createElement('div');
     totalRow.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding-top:10px;border-top:1px solid rgba(255,255,255,0.1);margin-top:6px';
     const total = parsed.zeit_total || 0;
@@ -967,7 +863,6 @@ function makeGroup(title) {
   g.innerHTML = `<div class="sec-title">${title}</div>`;
   return g;
 }
-
 function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function escAttr(s) { return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;'); }
 
@@ -975,14 +870,12 @@ function escAttr(s) { return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot
 function collectEdits() {
   const out = {};
   $('fields-wrap').querySelectorAll('[data-key]').forEach(el => {
-    const key = el.dataset.key;
+    const key = el.dataset.key.replace(/\./g, '_');
     const val = el.type === 'checkbox' ? el.checked : el.value;
     out[key] = val;
   });
-
-  // Collect edited zeitverrechnung rows
   const zvLeistung = $('fields-wrap').querySelectorAll('[data-zv-key="leistung"]');
-  const zvStunden  = $('fields-wrap').querySelectorAll('[data-zv-key="stunden"]');
+  const zvStunden = $('fields-wrap').querySelectorAll('[data-zv-key="stunden"]');
   if (zvLeistung.length) {
     const rows = [];
     zvLeistung.forEach((el, i) => {
@@ -995,15 +888,12 @@ function collectEdits() {
     });
     out.zeitverrechnung = JSON.stringify(rows);
   }
-
-  // Collect edited total
   const totalEl = $('inp-zeit-total');
   if (totalEl) out.zeit_verrechnung_h = parseFloat(totalEl.value) || 0;
-
   return out;
 }
 
-// ── Supabase save ─────────────────────────────────────────────────────────────
+// ── PATCH 5: saveToSupabase (ehemals saveToAirtable) ─────────────────────────
 async function saveToSupabase() {
   const { dokumenttyp, felder = {}, confidence = 0 } = lastResult;
   const tableName = TABLE_MAP[dokumenttyp];
@@ -1033,17 +923,16 @@ async function saveToSupabase() {
     }
     return result;
   }
+
   const flatFelder = flattenToUnderscore(felder);
   const merged = { ...flatFelder, ...edits };
-  const flatMerged = merged;
 
   const fields = {};
-  Object.entries(flatMerged).forEach(([k, v]) => {
-    if (k === 'unsichere_felder' || k === 'confidence' || k === 'zeit_total' || k === 'zeit_hinweis') return;
+  Object.entries(merged).forEach(([k, v]) => {
+    if (k === 'unsichere_felder' || k === 'zeit_total' || k === 'zeit_hinweis') return;
+    if (NEVER_SAVE_FIELDS.has(k)) return; // PATCH 7: entfernte Felder nie speichern
     if (ARRAY_FIELDS.has(k)) {
       fields[k] = typeof v === 'string' ? v : JSON.stringify(v);
-    } else if (CHECKBOX_FIELDS.has(k)) {
-      fields[k] = v === true || v === 'true' || v === 1;
     } else if (NUMBER_FIELDS.has(k)) {
       const n = parseFloat(String(v).replace(',', '.'));
       fields[k] = isNaN(n) ? 0 : n;
@@ -1051,54 +940,48 @@ async function saveToSupabase() {
       fields[k] = v === null || v === undefined ? '' : String(v);
     }
   });
+
   fields.confidence = typeof confidence === 'number' ? confidence : parseFloat(confidence) || 0;
 
-  // Link to active Auftrag session
   if (sessionAuftragNr && !fields.auftrag_nr) {
     fields.auftrag_nr = sessionAuftragNr;
   }
-  // If this IS the werkstatt_auftrag, update session with its auftrag_nr
   if (dokumenttyp === 'werkstatt_auftrag' && fields.auftrag_nr) {
     sessionAuftragNr = fields.auftrag_nr;
   }
-
-  // zeit_verrechnung_h only for werkstatt_auftrag and servicelaufblatt
   if (dokumenttyp !== 'einlagerungsschein' && edits.zeit_verrechnung_h !== undefined) {
     fields.zeit_verrechnung_h = parseFloat(edits.zeit_verrechnung_h) || 0;
   }
 
+  // Leere Strings und null/undefined entfernen — für Supabase nur befüllte Felder
   const cleanFields = Object.fromEntries(
-    Object.entries(fields).filter(([, v]) => {
-      if (v === null || v === undefined || v === '') return false;
-      if (v === false) return false;
-      if (v === 0 || v === '0') return false;
-      return true;
-    })
+    Object.entries(fields).filter(([, v]) => v !== null && v !== undefined && v !== '')
   );
+
   const preparedFields = Object.fromEntries(
     Object.entries(cleanFields).map(([k, v]) => [
       k,
-      (Array.isArray(v) || (typeof v === 'object' && v !== null && typeof v !== 'boolean'))
-        ? JSON.stringify(v)
-        : v
+      (Array.isArray(v) || (typeof v === 'object' && v !== null)) ? JSON.stringify(v) : v
     ])
   );
 
   try {
     const workerBase = (CONFIG.WORKER_URL || '').replace(/\/?$/, '');
+    // PATCH 5: Endpoint /supabase statt /airtable
     const res = await fetch(`${workerBase}/supabase`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ table: tableName, fields: preparedFields })
     });
-    if (!res.ok) { const t = await res.text(); throw new Error(`supabase ${res.status}: ${t}`); }
+    if (!res.ok) { const t = await res.text(); throw new Error(`Supabase ${res.status}: ${t}`); }
     const data = await res.json();
-    const recId = data.id || '–';
+    // Supabase gibt Array zurück bei Prefer: return=representation
+    const recId = (Array.isArray(data) ? data[0]?.id : data?.id) || '–';
     $('success-detail').textContent = `${DOCTYPE_LABELS[dokumenttyp]} in „${tableName}" gespeichert.\nDatensatz-ID: ${recId}`;
     show('s-success');
   } catch (err) {
     retryFn = saveToSupabase;
-    showError('Speicherfehler', err.message);
+    showError('Supabase Fehler', err.message);
   }
 }
 
@@ -1113,7 +996,7 @@ function showError(title, msg) {
 $('btn-capture').addEventListener('click', captureAndCompress);
 $('btn-retake').addEventListener('click', () => show('s-camera'));
 $('btn-analyze').addEventListener('click', analyzeWithClaude);
-$('btn-confirm').addEventListener('click', saveToSupabase);
+$('btn-confirm').addEventListener('click', saveToSupabase); // PATCH 5
 $('btn-review-retake').addEventListener('click', startCamera);
 $('btn-next').addEventListener('click', startCamera);
 $('btn-new-auftrag').addEventListener('click', () => { sessionAuftragNr = null; startCamera(); });
