@@ -869,11 +869,33 @@ function escAttr(s) { return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot
 // ── Collect edits ─────────────────────────────────────────────────────────────
 function collectEdits() {
   const out = {};
+  const arrayAccum = {};
+
   $('fields-wrap').querySelectorAll('[data-key]').forEach(el => {
-    const key = el.dataset.key.replace(/\./g, '_');
+    const rawKey = el.dataset.key;
     const val = el.type === 'checkbox' ? el.checked : el.value;
-    out[key] = val;
+    const parts = rawKey.split('.');
+
+    if (parts.length >= 2 && ARRAY_FIELDS.has(parts[0])) {
+      const fieldName = parts[0];
+      const idx = parseInt(parts[1], 10);
+      if (!arrayAccum[fieldName]) arrayAccum[fieldName] = [];
+      if (parts.length === 3) {
+        const subKey = parts[2];
+        if (!arrayAccum[fieldName][idx]) arrayAccum[fieldName][idx] = {};
+        arrayAccum[fieldName][idx][subKey] = val;
+      } else {
+        arrayAccum[fieldName][idx] = val;
+      }
+    } else {
+      out[rawKey.replace(/\./g, '_')] = val;
+    }
   });
+
+  for (const [fieldName, arr] of Object.entries(arrayAccum)) {
+    out[fieldName] = JSON.stringify(arr.filter(v => v !== undefined));
+  }
+
   const zvLeistung = $('fields-wrap').querySelectorAll('[data-zv-key="leistung"]');
   const zvStunden = $('fields-wrap').querySelectorAll('[data-zv-key="stunden"]');
   if (zvLeistung.length) {
