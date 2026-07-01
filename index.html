@@ -523,6 +523,15 @@ const NUMBER_FIELDS = new Set([
 // PATCH 4: ARRAY_FIELDS bereinigt (hervorgehoben + verbrauchsmaterial entfernt)
 const ARRAY_FIELDS = new Set(['arbeiten','notizen','reifenetikett','zeitverrechnung','positionen']);
 
+// Felder die als float/numeric gespeichert werden (nicht integer)
+const FLOAT_FIELDS = new Set([
+  'confidence','zeit_total','zeit_verrechnung_h',
+  // MAT-Felder: Dezimalwerte erlaubt (z.B. 0.5L Scheibenwischwasser)
+  'MAT_2','MAT_3','MAT_4','MAT_5','MAT_9','MAT_12','MAT_13','MAT_16','MAT_17',
+  'MAT_18','MAT_19','MAT_20','MAT_21','MAT_22','MAT_24','MAT_25',
+  'MAT_134','MAT_1234','MAT_AD'
+]);
+
 // Felder die NIE gespeichert werden (Werkstatt-Auftrag Bereinigung)
 const NEVER_SAVE_FIELDS = new Set([
   'annahme_datum','annahme_uhrzeit','termin_datum','annehmer','mechaniker',
@@ -957,7 +966,14 @@ async function saveToSupabase() {
       fields[k] = typeof v === 'string' ? v : JSON.stringify(v);
     } else if (NUMBER_FIELDS.has(k)) {
       const n = parseFloat(String(v).replace(',', '.'));
-      fields[k] = isNaN(n) ? 0 : n;
+      if (isNaN(n)) {
+        // leer lassen — wird später durch cleanFields gefiltert
+        fields[k] = null;
+      } else if (FLOAT_FIELDS.has(k)) {
+        fields[k] = n;
+      } else {
+        fields[k] = Math.round(n); // integer für MAT_*, PW_*, GL_* etc.
+      }
     } else {
       fields[k] = v === null || v === undefined ? '' : String(v);
     }
