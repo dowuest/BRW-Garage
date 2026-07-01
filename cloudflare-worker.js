@@ -16,20 +16,16 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
 
-    // ── CORS Preflight ────────────────────────────────────────────────────────
     if (request.method === 'OPTIONS') {
       return new Response(null, { headers: CORS });
     }
 
-    // ── Helpers ───────────────────────────────────────────────────────────────
     const json = (data, status = 200) => new Response(JSON.stringify(data), {
       status,
       headers: { 'Content-Type': 'application/json', ...CORS },
     });
-
     const err = (msg, status = 400) => json({ error: msg }, status);
 
-    // Supabase REST API aufrufen
     async function supabase(method, path, body = null) {
       const res = await fetch(`${env.SUPABASE_URL}/rest/v1${path}`, {
         method,
@@ -46,27 +42,31 @@ export default {
       catch { return { ok: res.ok, status: res.status, data: text }; }
     }
 
-    // ── Route: /aggregate?auftrag_nr=12345 (GET) ─────────────────────────────
+    // ── /aggregate?auftrag_nr=12345 (GET) ────────────────────────────────────
     if (url.pathname === '/aggregate' && request.method === 'GET') {
       const auftrag_nr = url.searchParams.get('auftrag_nr');
       if (!auftrag_nr) return err('auftrag_nr fehlt');
-
       const result = await supabase('GET',
         `/auftrag_komplett?auftrag_nr=eq.${encodeURIComponent(auftrag_nr)}&limit=1`
       );
-
       if (!result.ok) return json(result.data, result.status);
-      if (!result.data || result.data.length === 0) {
-        return err(`Kein Auftrag gefunden: ${auftrag_nr}`, 404);
-      }
+      if (!result.data?.length) return err(`Kein Auftrag gefunden: ${auftrag_nr}`, 404);
       return json(result.data[0]);
     }
 
-    // ── Route: /send-to-pad (POST) ────────────────────────────────────────────
+    // ── /aggregate-all (GET) — alle Aufträge fürs Dashboard ──────────────────
+    if (url.pathname === '/aggregate-all' && request.method === 'GET') {
+      const result = await supabase('GET',
+        `/auftrag_komplett?order=auftrag_nr.desc&limit=200`
+      );
+      if (!result.ok) return json(result.data, result.status);
+      return json(result.data || []);
+    }
+
+    // ── /send-to-pad (POST) ───────────────────────────────────────────────────
     if (url.pathname === '/send-to-pad' && request.method === 'POST') {
       let body;
       try { body = await request.json(); } catch { return err('Invalid JSON'); }
-
       const { auftrag_nr } = body;
       if (!auftrag_nr) return err('auftrag_nr fehlt');
 
@@ -81,12 +81,12 @@ export default {
       if (!env.PAD_URL) {
         return err('PAD_URL nicht konfiguriert – bitte in Cloudflare Secrets setzen', 503);
       }
+
       const padRes = await fetch(env.PAD_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
-
       if (!padRes.ok) {
         const t = await padRes.text();
         return err(`Power Automate Fehler ${padRes.status}: ${t}`, 502);
@@ -96,25 +96,39 @@ export default {
         `/werkstatt_auftraege?auftrag_nr=eq.${encodeURIComponent(auftrag_nr)}`,
         { nextlane_gesendet: true, nextlane_gesendet_am: new Date().toISOString() }
       );
-
       return json({ ok: true, auftrag_nr, message: 'An Power Automate Desktop gesendet' });
     }
 
-    // ── Route: /supabase (POST) ───────────────────────────────────────────────
-    // PWA schickt bereits saubere, gefilterte Felder — Worker reicht direkt durch
+    // ── /delete (POST) — löscht Auftrag aus allen Tabellen ───────────────────
+    if (url.pathname === '/delete' && request.method === 'POST') {
+      let body;
+      try { body = await request.json(); } catch { return err('Invalid JSON'); }
+      const { auftrag_nr } = body;
+      if (!auftrag_nr) return err('auftrag_nr fehlt');
+
+      const enc = encodeURIComponent(auftrag_nr);
+
+      // Reihenfolge: erst abhängige Tabellen, dann werkstatt_auftraege
+      const sl = await supabase('DELETE', `/servicelaufblaetter?auftrag_nr=eq.${enc}`);
+      const es = await supabase('DELETE', `/einlagerungsscheine?auftrag_nr=eq.${enc}`);
+      const wa = await supabase('DELETE', `/werkstatt_auftraege?auftrag_nr=eq.${enc}`);
+
+      if (!wa.ok) return err(`Fehler beim Löschen: ${JSON.stringify(wa.data)}`, 500);
+      return json({ ok: true, auftrag_nr, deleted: { servicelaufblaetter: sl.ok, einlagerungsscheine: es.ok, werkstatt_auftraege: wa.ok } });
+    }
+
+    // ── /supabase (POST) — PWA speichert Dokumente ────────────────────────────
     if (url.pathname === '/supabase' && request.method === 'POST') {
       let body;
       try { body = await request.json(); } catch { return err('Invalid JSON'); }
-
       const { table, fields } = body;
       if (!table || !fields) return err('table und fields erforderlich');
 
-      // Leere Strings und null entfernen (Sicherheitsnetz)
       const cleanFields = Object.fromEntries(
         Object.entries(fields).filter(([, v]) => v !== '' && v !== null && v !== undefined)
       );
 
-      // Einlagerungsschein: Spezialfall profiltiefe lowercase + integer
+      // Einlagerungsschein: profiltiefe uppercase → lowercase + integer
       if (table === 'einlagerungsscheine') {
         const remap = {
           profiltiefe_VL: 'profiltiefe_vl',
@@ -130,14 +144,29 @@ export default {
         }
       }
 
+      // Werkstatt-Aufträge: upsert (update wenn auftrag_nr bereits existiert)
+      if (table === 'werkstatt_auftraege' && cleanFields.auftrag_nr) {
+        const upsertRes = await fetch(`${env.SUPABASE_URL}/rest/v1/${table}`, {
+          method: 'POST',
+          headers: {
+            'apikey': env.SUPABASE_KEY,
+            'Authorization': `Bearer ${env.SUPABASE_KEY}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'resolution=merge-duplicates,return=representation',
+          },
+          body: JSON.stringify(cleanFields),
+        });
+        const upsertText = await upsertRes.text();
+        try { return json(JSON.parse(upsertText), upsertRes.status); }
+        catch { return json(upsertText, upsertRes.status); }
+      }
+
       const result = await supabase('POST', `/${table}`, cleanFields);
       return json(result.data, result.status);
     }
 
-    // ── Route: / (POST) → Claude API ─────────────────────────────────────────
-    if (request.method !== 'POST') {
-      return err('Method not allowed', 405);
-    }
+    // ── / (POST) — Claude API ─────────────────────────────────────────────────
+    if (request.method !== 'POST') return err('Method not allowed', 405);
 
     let body;
     try { body = await request.json(); } catch { return err('Invalid JSON'); }
