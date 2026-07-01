@@ -816,6 +816,10 @@ function buildReview(parsed) {
 
   const wrap = $('fields-wrap');
   wrap.innerHTML = '';
+  // Alten Session-Banner entfernen falls vorhanden
+  const oldBanner = wrap.parentElement.querySelector('.session-banner');
+  if (oldBanner) oldBanner.remove();
+  sessionBanner.classList.add('session-banner');
   wrap.parentElement.insertBefore(sessionBanner, wrap);
 
   // Felder rendern — NEVER_SAVE_FIELDS auch in der Anzeige ausblenden
